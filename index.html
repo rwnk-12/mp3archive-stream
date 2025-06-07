@@ -1,43 +1,3 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -184,6 +144,52 @@
         .track-download-btn.loading .circular-progress,
         .track-download-btn.loading .download-progress-text { display: block; }
         .track-download-btn.loading .btn-loader { display: none; }
+        
+        /* --- Item-specific Jump to Folder Button (Search only) --- */
+        .item-jump-to-folder-btn {
+            background: none;
+            border: none;
+            color: var(--icon-color-default);
+            cursor: pointer;
+            line-height: 1;
+            flex-shrink: 0;
+            position: relative;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .file-item-list .item-jump-to-folder-btn {
+            font-size: 1.1rem;
+            padding: 0;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 5px;
+        }
+        .file-item-list .item-jump-to-folder-btn:hover {
+            background-color: var(--button-bg-hover);
+            color: var(--text-primary);
+        }
+        .file-item-grid .item-jump-to-folder-btn {
+            position: absolute;
+            bottom: 8px;
+            left: 8px;
+            background-color: rgba(0,0,0,0.3);
+            backdrop-filter: blur(2px);
+            font-size: 0.9rem;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        .file-item-grid .item-jump-to-folder-btn:hover {
+            background-color: rgba(255,255,255,0.2);
+            color: var(--text-primary);
+        }
 
         /* --- Grid View --- */
         .file-browser-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
@@ -211,7 +217,7 @@
          .file-duration-list { font-size: 0.8rem; color: var(--text-secondary); width: 45px; text-align: right; flex-shrink: 0; }
          .file-size-list { font-size: 0.8rem; color: var(--text-secondary); min-width: 55px; text-align: right; flex-shrink: 0; }
          .file-item-count { font-size: 0.8rem; color: var(--text-secondary); margin-left: auto; flex-shrink: 0; padding-left: 15px; }
-         .file-item-list .track-download-btn { margin-left: 8px; }
+         .file-item-list .track-download-btn { margin-left: 5px; }
          .file-item-list.playing-track { background-color: var(--highlight-color); border-left-color: var(--accent-color); }
          .file-item-list.playing-track .file-name-list { color: var(--accent-color); font-weight: 600;}
 
@@ -306,45 +312,140 @@
         .mini-progress { position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background-color: var(--progress-bar); display: none; z-index: 102; pointer-events: none; }
         .mini-progress::after { content: ''; position: absolute; left: 0; top: 0; height: 100%; background-color: var(--progress-filled); width: var(--progress-width, 0%); transition: width 0.1s linear; }
 
-        /* --- Full Screen Lyrics View --- */
-        .player-column-right { flex-direction: column; height: 100%; box-sizing: border-box; background: linear-gradient(to right, rgba(0,0,0,0.1), transparent); overflow: hidden; position: relative; display: none; /* Hidden by default */ padding: 30px 60px; /* FIX: Added horizontal padding */ }
-        .lyrics-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; color: var(--text-primary); }
+        /*
+        ========================================
+        --- Full Screen Lyrics View (REVISED) ---
+        ========================================
+        */
+        .lyrics-header { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px; color: var(--text-primary); flex-shrink: 0; }
         .lyrics-header h3 { margin: 0; font-size: 1.5rem; font-weight: 700; }
         #lyrics-view-close-btn { background: none; border: none; font-size: 2rem; color: var(--text-secondary); cursor: pointer; line-height: 1; transition: color 0.2s; padding: 0 10px; }
         #lyrics-view-close-btn:hover { color: var(--text-primary); }
         
-        #lyrics-container { height: calc(100% - 60px); overflow-y: auto; text-align: left; padding-right: 20px; scrollbar-width: thin; scrollbar-color: var(--bg-tertiary) transparent; scroll-padding: 45% 0; }
+        #lyrics-container { 
+            height: 100%;
+            width: 100%;
+            overflow-y: auto; 
+            text-align: left; 
+            scrollbar-width: thin; 
+            scrollbar-color: var(--bg-tertiary) transparent; 
+            scroll-padding: 45% 0; 
+            box-sizing: border-box;
+        }
         #lyrics-container::-webkit-scrollbar { width: 8px; }
         #lyrics-container::-webkit-scrollbar-track { background: transparent; }
         #lyrics-container::-webkit-scrollbar-thumb { background-color: var(--bg-tertiary); border-radius: 4px; }
         
-        /* Add top/bottom buffers to allow first/last lines to be centered */
         #lyrics-container::before,
-        #lyrics-container::after { content: ''; display: block; height: 45%; }
-        .lyrics-line, .lyrics-plain { font-size: 1.8rem; font-weight: 600; line-height: 1.5; margin: 0 0 1em 0; color: var(--lyrics-text-color); transition: color 0.3s ease, transform 0.3s ease; opacity: 0.6; }
-        .lyrics-line[data-time] { cursor: pointer; } /* Click-to-seek cursor */
-        .lyrics-line.active { color: var(--lyrics-active-color); transform: scale(1.02); opacity: 1; }
+        #lyrics-container::after { 
+            content: ''; 
+            display: block; 
+            height: 45%; 
+        }
+        .lyrics-line, .lyrics-plain { 
+            font-size: 2.2rem;  /* Increased size */
+            font-weight: 700; /* Increased weight */
+            line-height: 1.4; 
+            margin: 0 0 0.8em 0; 
+            color: var(--lyrics-text-color); 
+            transition: color 0.3s ease, transform 0.3s ease, opacity 0.3s ease; 
+            opacity: 0.5; 
+        }
+        .lyrics-line[data-time] { cursor: pointer; } 
+        .lyrics-line.active { 
+            color: var(--lyrics-active-color); 
+            transform: scale(1.02); 
+            opacity: 1; 
+        }
         #lyrics-container.plain-text .lyrics-plain { font-size: 1.2rem; line-height: 1.7; font-weight: 500; opacity: 0.9; white-space: pre-wrap; }
         #lyrics-container.plain-text::before,
         #lyrics-container.plain-text::after { display: none; }
         .lyrics-status { color: var(--text-secondary); font-style: italic; font-size: 1.2rem; }
 
-        body.lyrics-view-active #player-section { top: 0; height: 100%; bottom: auto; padding: 0; background-color: rgba(18, 18, 18, 0.98); }
+        /* Activate Lyrics View */
+        body.lyrics-view-active #player-section { 
+            top: 0; 
+            height: 100%; 
+            bottom: auto; 
+            padding: 0; 
+            background-color: var(--bg-tertiary); 
+        }
         body.lyrics-view-active .player-toggle-button, body.lyrics-view-active .mini-progress, body.lyrics-view-active .mini-title { display: none !important; }
-        body.lyrics-view-active .player-content-wrapper { flex-direction: row; height: 100%; padding: 0; }
-        /* LAYOUT ADJUST: Give left column a fixed base and let lyrics grow */
-        body.lyrics-view-active .player-column-left { flex: 0 0 450px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 30px; }
-        body.lyrics-view-active .player-column-right { flex: 1 1 auto; display: flex; }
-        body.lyrics-view-active .player-info { flex-direction: column; text-align: center; flex-basis: auto; width: 100%; max-width: 350px; gap: 15px; }
-        body.lyrics-view-active .player-album-art { width: 100%; height: auto; padding-top: 100%; /* 1:1 Aspect Ratio */ max-width: 350px; border-radius: 12px; }
-        body.lyrics-view-active .player-text { text-align: center; }
-        body.lyrics-view-active .player-title { font-size: 1.5rem; white-space: normal; }
-        body.lyrics-view-active .player-subtitle { font-size: 1rem; white-space: normal; }
-        body.lyrics-view-active .jump-to-folder-btn { display: none; }
-        body.lyrics-view-active .player-controls { flex-basis: auto; width: 100%; max-width: 400px; }
-        body.lyrics-view-active .player-extras { flex-basis: auto; width: 100%; max-width: 400px; justify-content: space-evenly; }
-        body.lyrics-view-active .pitch-control, body.lyrics-view-active .volume-control { flex-grow: 1; justify-content: center; }
-        body.lyrics-view-active #lyrics-btn { display: none; }
+        body.lyrics-view-active .player-content-wrapper { 
+            flex-direction: row; 
+            height: 100%; 
+            padding: 0; 
+            align-items: stretch;
+        }
+        
+        /* Left Column (Player Controls) in Lyrics View */
+        body.lyrics-view-active .player-column-left { 
+            flex: 0 0 40%; /* Proportional width */
+            max-width: 500px; /* Cap width on large screens */
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 25px; 
+            padding: 40px; 
+            box-sizing: border-box;
+        }
+        /* Right Column (Lyrics) in Lyrics View */
+        body.lyrics-view-active .player-column-right { 
+            flex: 1 1 60%; /* Proportional width */
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            background-color: var(--bg-primary);
+            padding: 40px 60px; /* Padding creates safe space for lyrics */
+        }
+        
+        /* Elements inside Left Column */
+        body.lyrics-view-active .player-info { 
+            flex-direction: column; 
+            text-align: center; 
+            flex-basis: auto; 
+            width: 100%; 
+            max-width: 400px; 
+            gap: 20px; 
+        }
+        body.lyrics-view-active .player-album-art { 
+            width: 100%; 
+            height: auto; 
+            padding-top: 100%;
+            max-width: 400px; 
+            border-radius: 12px; 
+        }
+        body.lyrics-view-active .player-text { 
+            text-align: center; 
+        }
+        body.lyrics-view-active .player-title { 
+            font-size: 1.6rem; 
+            white-space: normal;
+            line-height: 1.2;
+        }
+        body.lyrics-view-active .player-subtitle { 
+            font-size: 1.1rem; 
+            white-space: normal; 
+        }
+        body.lyrics-view-active .jump-to-folder-btn,
+        body.lyrics-view-active #lyrics-btn { 
+            display: none; 
+        }
+        body.lyrics-view-active .player-controls,
+        body.lyrics-view-active .player-extras { 
+            flex-basis: auto; 
+            width: 100%; 
+            max-width: 400px; 
+        }
+        body.lyrics-view-active .player-extras {
+             justify-content: space-evenly;
+        }
+        body.lyrics-view-active .pitch-control, 
+        body.lyrics-view-active .volume-control { 
+            flex-grow: 1; 
+            justify-content: center; 
+        }
 
 
         /* --- Status Messages & Loader --- */
@@ -374,23 +475,11 @@
         body.lyrics-view-active { padding-bottom: 0 !important; }
 
 
-        @media (max-width: 900px) {
-             .player-content-wrapper { gap: 10px; }
-             .player-column-left { flex-direction: row; }
-             .player-info { flex-basis: 35%; min-width: 160px; }
-             .player-controls { flex-basis: 35%; max-width: 400px; }
-             .player-extras { flex-basis: 20%; justify-content: flex-end; min-width: 150px; gap: 5px;}
-             .control-slider { width: 60px; }
-             .player-info .jump-to-folder-btn { width: 30px; height: 30px; font-size: 0.9rem; }
-             .revert-speed-btn { width: 26px; height: 26px; font-size: 0.8rem; }
-             .directory-container { min-width: 120px; }
-             .item-count-display { margin: 0 8px; font-size: 0.75rem; }
-             
-             /* RESPONSIVE: On small screens, hide art/controls and show only lyrics */
-             body.lyrics-view-active .player-column-left { display: none; }
-             body.lyrics-view-active .player-column-right { flex: 1 1 100%; padding: 20px; }
-             
-             .lyrics-line, .lyrics-plain { font-size: 1.5rem; }
+        @media (max-width: 1024px) {
+            /* On tablets, give lyrics more space */
+             body.lyrics-view-active .player-column-left { flex-basis: 35%; max-width: 400px; }
+             body.lyrics-view-active .player-column-right { flex-basis: 65%; padding: 30px 40px; }
+             .lyrics-line, .lyrics-plain { font-size: 1.8rem; }
         }
 
         @media (max-width: 768px) {
@@ -422,6 +511,9 @@
             .revert-speed-btn { width: 30px; height: 30px; font-size: 0.9rem; }
             #player-section.super-minimized .mini-title { max-width: calc(100% - 70px); }
             
+            /* On smaller screens, lyrics view becomes single-column (player controls disappear) */
+            body.lyrics-view-active .player-column-left { display: none; }
+            body.lyrics-view-active .player-column-right { flex: 1 1 100%; padding: 20px; }
             body.lyrics-view-active .player-info { flex-direction: column; text-align: center; }
             body.lyrics-view-active .player-album-art { width: 250px; height: 250px; padding-top: 0; }
             .lyrics-line, .lyrics-plain { font-size: 1.3rem; }
@@ -1002,8 +1094,101 @@
                 </button>`;
         }
 
-        function renderFileBrowserGrid(items) { items.forEach(item => { const itemEl = document.createElement('div'); itemEl.className = 'file-item-grid'; itemEl.dataset.path = item.path; const icon = document.createElement('div'); icon.className = 'file-icon-grid'; const nameEl = document.createElement('div'); nameEl.className = 'file-name-grid'; nameEl.textContent = item.displayName || '[No Name]'; nameEl.title = item.displayName || item.path; const infoEl = document.createElement('div'); infoEl.className = 'file-info-grid'; if (item.isDirectory) { icon.innerHTML = '<i class="fas fa-folder"></i>'; icon.classList.add('folder'); itemEl.addEventListener('click', (e) => { if (!e.target.closest('.track-download-btn')) updateDirectoryView(item.path); }); infoEl.textContent = 'Folder'; } else if (item.isAudio) { icon.innerHTML = '<i class="fas fa-music"></i>'; itemEl.addEventListener('click', (e) => { if (!e.target.closest('.track-download-btn')) playAudioFile(item, currentTracklist); }); infoEl.textContent = formatFileSize(item.size); itemEl.insertAdjacentHTML('beforeend', createTrackDownloadButtonHTML(item.path, item.displayName));} else { icon.innerHTML = '<i class="fas fa-file"></i>'; infoEl.textContent = formatFileSize(item.size); itemEl.style.cursor = 'default'; itemEl.style.opacity = '0.7'; } itemEl.appendChild(icon); itemEl.appendChild(nameEl); itemEl.appendChild(infoEl); fileBrowserContainerEl.appendChild(itemEl); }); }
-        function renderFileBrowserList(items) { items.forEach(item => { const itemEl = document.createElement('div'); itemEl.className = `file-item-list ${item.isDirectory || item.isAudio ? '' : 'non-interactive'}`; itemEl.dataset.path = item.path; const icon = document.createElement('div'); icon.className = 'file-icon-list'; const nameEl = document.createElement('div'); nameEl.className = 'file-name-list'; nameEl.textContent = item.title || item.displayName || '[No Name]'; nameEl.title = item.displayName || item.path; const infoEl = document.createElement('div'); infoEl.className = 'file-info-list'; const durationEl = document.createElement('span'); durationEl.className = 'file-duration-list'; const sizeEl = document.createElement('span'); sizeEl.className = 'file-size-list'; if (item.isDirectory) { icon.innerHTML = '<i class="fas fa-folder"></i>'; icon.classList.add('folder'); itemEl.addEventListener('click', (e) => { if (!e.target.closest('.track-download-btn')) updateDirectoryView(item.path); }); sizeEl.textContent = 'Folder'; itemEl.style.cursor = 'pointer'; } else if (item.isAudio) { icon.innerHTML = '<i class="fas fa-music"></i>'; nameEl.addEventListener('click', () => playAudioFile(item, currentTracklist)); durationEl.textContent = item.duration ? formatTime(item.duration) : '--:--'; durationEl.dataset.path = item.path; sizeEl.textContent = formatFileSize(item.size); infoEl.insertAdjacentHTML('beforeend', createTrackDownloadButtonHTML(item.path, item.displayName)); itemEl.style.cursor = 'default'; } else { icon.innerHTML = '<i class="fas fa-file"></i>'; sizeEl.textContent = formatFileSize(item.size); } itemEl.appendChild(icon); itemEl.appendChild(nameEl); infoEl.insertBefore(durationEl, infoEl.firstChild); infoEl.insertBefore(sizeEl, durationEl.nextSibling); itemEl.appendChild(infoEl); fileBrowserContainerEl.appendChild(itemEl); }); }
+        function renderFileBrowserGrid(items) { 
+            const isSearchMode = searchBox.value.trim() !== '' && searchContainer.classList.contains('active');
+            items.forEach(item => { 
+                const itemEl = document.createElement('div'); 
+                itemEl.className = 'file-item-grid'; 
+                itemEl.dataset.path = item.path; 
+                const icon = document.createElement('div'); 
+                icon.className = 'file-icon-grid'; 
+                const nameEl = document.createElement('div'); 
+                nameEl.className = 'file-name-grid'; 
+                nameEl.textContent = item.displayName || '[No Name]'; 
+                nameEl.title = item.displayName || item.path; 
+                const infoEl = document.createElement('div'); 
+                infoEl.className = 'file-info-grid'; 
+                if (item.isDirectory) { 
+                    icon.innerHTML = '<i class="fas fa-folder"></i>'; 
+                    icon.classList.add('folder'); 
+                    itemEl.addEventListener('click', (e) => { if (!e.target.closest('.track-download-btn')) updateDirectoryView(item.path); }); 
+                    infoEl.textContent = 'Folder'; 
+                } else if (item.isAudio) { 
+                    icon.innerHTML = '<i class="fas fa-music"></i>'; 
+                    itemEl.addEventListener('click', (e) => { if (!e.target.closest('.track-download-btn, .item-jump-to-folder-btn')) playAudioFile(item, currentTracklist); }); 
+                    infoEl.textContent = formatFileSize(item.size); 
+                    if (isSearchMode) {
+                        itemEl.insertAdjacentHTML('beforeend', `
+                            <button class="item-jump-to-folder-btn" title="Go to folder" data-path="${item.path}">
+                                <i class="fas fa-folder-open"></i>
+                            </button>
+                        `);
+                    }
+                    itemEl.insertAdjacentHTML('beforeend', createTrackDownloadButtonHTML(item.path, item.displayName));
+                } else { 
+                    icon.innerHTML = '<i class="fas fa-file"></i>'; 
+                    infoEl.textContent = formatFileSize(item.size); 
+                    itemEl.style.cursor = 'default'; 
+                    itemEl.style.opacity = '0.7'; 
+                } 
+                itemEl.appendChild(icon); 
+                itemEl.appendChild(nameEl); 
+                itemEl.appendChild(infoEl); 
+                fileBrowserContainerEl.appendChild(itemEl); 
+            }); 
+        }
+
+        function renderFileBrowserList(items) { 
+            const isSearchMode = searchBox.value.trim() !== '' && searchContainer.classList.contains('active');
+            items.forEach(item => { 
+                const itemEl = document.createElement('div'); 
+                itemEl.className = `file-item-list ${item.isDirectory || item.isAudio ? '' : 'non-interactive'}`; 
+                itemEl.dataset.path = item.path; 
+                const icon = document.createElement('div'); 
+                icon.className = 'file-icon-list'; 
+                const nameEl = document.createElement('div'); 
+                nameEl.className = 'file-name-list'; 
+                nameEl.textContent = item.title || item.displayName || '[No Name]'; 
+                nameEl.title = item.displayName || item.path; 
+                const infoEl = document.createElement('div'); 
+                infoEl.className = 'file-info-list'; 
+                const durationEl = document.createElement('span'); 
+                durationEl.className = 'file-duration-list'; 
+                const sizeEl = document.createElement('span'); 
+                sizeEl.className = 'file-size-list'; 
+                if (item.isDirectory) { 
+                    icon.innerHTML = '<i class="fas fa-folder"></i>'; 
+                    icon.classList.add('folder'); 
+                    itemEl.addEventListener('click', (e) => { if (!e.target.closest('.track-download-btn')) updateDirectoryView(item.path); }); 
+                    sizeEl.textContent = 'Folder'; 
+                    itemEl.style.cursor = 'pointer'; 
+                } else if (item.isAudio) { 
+                    icon.innerHTML = '<i class="fas fa-music"></i>'; 
+                    nameEl.addEventListener('click', () => playAudioFile(item, currentTracklist)); 
+                    durationEl.textContent = item.duration ? formatTime(item.duration) : '--:--'; 
+                    durationEl.dataset.path = item.path; 
+                    sizeEl.textContent = formatFileSize(item.size); 
+                    if (isSearchMode) {
+                        infoEl.insertAdjacentHTML('beforeend', `
+                            <button class="item-jump-to-folder-btn" title="Go to folder" data-path="${item.path}">
+                                <i class="fas fa-folder-open"></i>
+                            </button>
+                        `);
+                    }
+                    infoEl.insertAdjacentHTML('beforeend', createTrackDownloadButtonHTML(item.path, item.displayName));
+                    itemEl.style.cursor = 'default'; 
+                } else { 
+                    icon.innerHTML = '<i class="fas fa-file"></i>'; 
+                    sizeEl.textContent = formatFileSize(item.size); 
+                } 
+                itemEl.appendChild(icon); 
+                itemEl.appendChild(nameEl); 
+                infoEl.insertBefore(durationEl, infoEl.firstChild); 
+                infoEl.insertBefore(sizeEl, durationEl.nextSibling); 
+                itemEl.appendChild(infoEl); 
+                fileBrowserContainerEl.appendChild(itemEl); 
+            }); 
+        }
         function formatFileSize(bytes) { if (bytes === undefined || bytes === null || bytes < 0) return ''; if (bytes === 0) return '0 B'; if (bytes < 1024) return bytes + ' B'; const i = Math.floor(Math.log(bytes) / Math.log(1024)); const units = ['B', 'KB', 'MB', 'GB', 'TB']; const unitIndex = Math.min(i, units.length - 1); const fixedDigits = unitIndex >= 2 ? 1 : 0; return parseFloat((bytes / Math.pow(1024, unitIndex)).toFixed(fixedDigits)) + ' ' + units[unitIndex];}
 
         function updateBreadcrumbs() {
@@ -1759,7 +1944,53 @@
             pitchSlider.addEventListener('change', () => saveSetting('playerRate', currentPlaybackRate));
             revertSpeedBtn.addEventListener('click', () => { currentPlaybackRate = 1.0; pitchSlider.value = currentPlaybackRate; if (sourceNode && audioContext) { const currentTime = getCurrentPlaybackTime(); sourceNode.playbackRate.setTargetAtTime(currentPlaybackRate, audioContext.currentTime, 0.015); if (isPlaying) { _startOffset = currentTime; _startTime = audioContext.currentTime; } } saveSetting('playerRate', currentPlaybackRate); });
             folderViewBtn.addEventListener('click', () => setMainViewMode(VIEW_MODE_FOLDER)); gridViewBtn.addEventListener('click', () => setLayoutMode('grid')); listViewBtn.addEventListener('click', () => setLayoutMode('list'));
-            fileBrowserContainerEl.addEventListener('click', (event) => { const downloadButton = event.target.closest('.track-download-btn'); if (downloadButton) { event.stopPropagation(); const filePath = downloadButton.dataset.path; const listItem = downloadButton.closest('.file-item-list, .file-item-grid'); const nameElement = listItem?.querySelector('.file-name-list, .file-name-grid'); const displayName = nameElement?.textContent || filePath?.split('/').pop(); if (filePath) downloadSpecificTrack(filePath, downloadButton, displayName, false); else console.error("No file path found for download button."); } });
+            
+            fileBrowserContainerEl.addEventListener('click', (event) => {
+                const downloadButton = event.target.closest('.track-download-btn');
+                if (downloadButton) {
+                    event.stopPropagation();
+                    const filePath = downloadButton.dataset.path;
+                    const listItem = downloadButton.closest('.file-item-list, .file-item-grid');
+                    const nameElement = listItem?.querySelector('.file-name-list, .file-name-grid');
+                    const displayName = nameElement?.textContent || filePath?.split('/').pop();
+                    if (filePath) {
+                        downloadSpecificTrack(filePath, downloadButton, displayName, false);
+                    } else {
+                        console.error("No file path found for download button.");
+                    }
+                    return;
+                }
+            
+                const itemJumpButton = event.target.closest('.item-jump-to-folder-btn');
+                if (itemJumpButton) {
+                    event.stopPropagation();
+                    const filePath = itemJumpButton.dataset.path;
+                    if (!filePath) {
+                        console.error("No file path found for jump-to-folder button.");
+                        return;
+                    }
+            
+                    const pathParts = filePath.split('/').filter(p => p);
+                    pathParts.pop();
+                    const folderPath = pathParts.join('/') + (pathParts.length > 0 ? '/' : '');
+                    
+                    toggleSearch(false); 
+                    searchBox.value = ''; 
+                    
+                    if (isLyricsViewActive) toggleLyricsView();
+                    
+                    if (currentMainView !== VIEW_MODE_FOLDER) { 
+                        setMainViewMode(VIEW_MODE_FOLDER); 
+                        // The setMainViewMode function will eventually call updateDirectoryView,
+                        // but we want it to go to the *new* folder path.
+                        // So we update the global `currentDirectory` and let it handle the rest.
+                        currentDirectory = folderPath;
+                    } else {
+                        updateDirectoryView(folderPath);
+                    }
+                }
+            });
+
             closeHintBtn.addEventListener('click', dismissSearchHint);
             
             // Lyrics listeners
