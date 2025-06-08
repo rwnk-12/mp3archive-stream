@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- jsmediatags Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+    <!-- JSZip Library for Multi-Download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         /* --- Apple Music-inspired Dark Theme --- */
         :root {
@@ -107,11 +109,27 @@
         .directory-crumb.current:hover { background-color: transparent; }
         .directory-separator { color: var(--text-secondary); font-size: 0.9rem; margin: 0 2px; }
         .item-count-display { font-size: 0.8rem; color: var(--text-secondary); margin: 0 10px; white-space: nowrap; flex-shrink: 0; line-height: 1.2; align-self: center; display: none; }
-        .view-toggle-buttons { display: flex; gap: 5px; background-color: var(--bg-tertiary); padding: 4px; border-radius: 6px; flex-shrink: 0; }
-        .view-toggle-btn { background: none; border: none; color: var(--text-secondary); font-size: 1.1rem; cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background-color 0.2s, color 0.2s; line-height: 1; }
-        .view-toggle-btn i { font-size: inherit; }
-        .view-toggle-btn:hover { color: var(--text-primary); }
-        .view-toggle-btn.active { background-color: var(--bg-secondary); color: var(--text-primary); box-shadow: inset 0 1px 2px rgba(0,0,0,0.3); }
+        .view-sort-controls { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .view-toggle-buttons, .sort-buttons { display: flex; gap: 5px; background-color: var(--bg-tertiary); padding: 4px; border-radius: 6px; }
+        .view-toggle-btn, .sort-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background-color 0.2s, color 0.2s; line-height: 1; }
+        .view-toggle-btn { font-size: 1.1rem; }
+        .sort-btn { font-size: 0.9rem; display: flex; align-items: center; gap: 5px; }
+        .view-toggle-btn i, .sort-btn i { font-size: 1.1em; }
+        .view-toggle-btn:hover, .sort-btn:hover { color: var(--text-primary); }
+        .view-toggle-btn.active, .sort-btn.active { background-color: var(--bg-secondary); color: var(--text-primary); box-shadow: inset 0 1px 2px rgba(0,0,0,0.3); }
+
+        /* --- Multi-Download Button --- */
+        #download-all-btn { background-color: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: 6px; padding: 5px 10px; font-size: 0.85rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; margin-left: 10px; flex-shrink: 0; }
+        #download-all-btn:hover:not(:disabled) { background-color: var(--bg-secondary); color: var(--text-primary); }
+        #download-all-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        #download-all-btn .icon { font-size: 1em; }
+        #download-all-progress-text { font-weight: 400; font-size: 0.8rem; }
+        #download-all-btn.loading .icon { display: none; }
+        #download-all-btn:not(.loading) #download-all-progress-container { display: none; }
+        #download-all-cancel-btn { color: var(--accent-color); margin-left: 8px; font-weight: 700; cursor: pointer; }
+        #download-all-cancel-btn:hover { color: var(--accent-hover); }
+        #download-all-btn .loader { width: 14px; height: 14px; border-width: 2px; margin-right: 5px; display: none; }
+        #download-all-btn.loading .loader { display: inline-block; }
 
         /* --- Skeleton Loaders --- */
         .skeleton { background-color: var(--bg-secondary); border-color: var(--border-color); pointer-events: none; position: relative; overflow: hidden; }
@@ -355,6 +373,7 @@
         .lyrics-line.active { 
             color: var(--lyrics-active-color); 
             transform: scale(1.02); 
+            transform-origin: left center; /* FIX: Prevents clipping on the left */
             opacity: 1; 
         }
         #lyrics-container.plain-text .lyrics-plain { font-size: 1.2rem; line-height: 1.7; font-weight: 500; opacity: 0.9; white-space: pre-wrap; }
@@ -380,8 +399,8 @@
         
         /* Left Column (Player Controls) in Lyrics View */
         body.lyrics-view-active .player-column-left { 
-            flex: 0 0 40%; /* Proportional width */
-            max-width: 500px; /* Cap width on large screens */
+            flex: 0 0 35%; /* UPDATE: Gave more space to lyrics */
+            max-width: 450px; /* UPDATE: Capped width for better proportions */
             display: flex; 
             flex-direction: column; 
             align-items: center; 
@@ -392,7 +411,7 @@
         }
         /* Right Column (Lyrics) in Lyrics View */
         body.lyrics-view-active .player-column-right { 
-            flex: 1 1 60%; /* Proportional width */
+            flex: 1 1 65%; /* UPDATE: Took more space */
             display: flex;
             flex-direction: column;
             box-sizing: border-box;
@@ -407,7 +426,8 @@
             flex-basis: auto; 
             width: 100%; 
             max-width: 400px; 
-            gap: 20px; 
+            gap: 15px; /* UPDATE: Adjusted gap */
+            flex-shrink: 0; /* FIX: Prevents container from shrinking */
         }
         body.lyrics-view-active .player-album-art { 
             width: 100%; 
@@ -418,6 +438,7 @@
         }
         body.lyrics-view-active .player-text { 
             text-align: center; 
+            overflow: visible; /* FIX: Prevents subtitle from being clipped */
         }
         body.lyrics-view-active .player-title { 
             font-size: 1.6rem; 
@@ -427,6 +448,8 @@
         body.lyrics-view-active .player-subtitle { 
             font-size: 1.1rem; 
             white-space: normal; 
+            margin-top: 4px; /* UPDATE: Added margin for spacing */
+            line-height: 1.3; /* UPDATE: Improved line height for wrapping */
         }
         body.lyrics-view-active .jump-to-folder-btn,
         body.lyrics-view-active #lyrics-btn { 
@@ -571,10 +594,29 @@
                 <div class="directory-path" id="directory-path"></div>
             </div>
             <span id="item-count-display" class="item-count-display"></span>
-            <div class="view-toggle-buttons" id="grid-list-toggle-container">
-                <button id="grid-view-btn" class="view-toggle-btn" title="Grid View"><i class="fas fa-th-large"></i></button>
-                <button id="list-view-btn" class="view-toggle-btn active" title="List View"><i class="fas fa-list"></i></button>
+            <div class="view-sort-controls">
+                <div class="sort-buttons" id="sort-buttons-container">
+                    <button id="sort-alpha-btn" class="sort-btn active" title="Sort Alphabetically (A-Z)">
+                        <i class="fas fa-sort-alpha-down"></i> A-Z
+                    </button>
+                    <button id="sort-year-btn" class="sort-btn" title="Sort by Year (Newest First)">
+                        <i class="fas fa-calendar-alt"></i> Year
+                    </button>
+                </div>
+                <div class="view-toggle-buttons" id="grid-list-toggle-container">
+                    <button id="grid-view-btn" class="view-toggle-btn" title="Grid View"><i class="fas fa-th-large"></i></button>
+                    <button id="list-view-btn" class="view-toggle-btn active" title="List View"><i class="fas fa-list"></i></button>
+                </div>
             </div>
+            <!-- Multi-Download Button -->
+            <button id="download-all-btn" title="Download all tracks in this view as a ZIP" disabled>
+                <span class="icon"><i class="fas fa-file-archive"></i></span>
+                <span id="download-all-progress-container">
+                    <span class="loader"></span>
+                    <span id="download-all-progress-text"></span>
+                    <span id="download-all-cancel-btn" title="Cancel Download">&times;</span>
+                </span>
+            </button>
         </div>
         <!-- Status Message -->
         <div id="status-message" class="status-message"></div>
@@ -727,7 +769,6 @@
         const closeHintBtn = document.getElementById('close-hint-btn');
         const gridViewBtn = document.getElementById('grid-view-btn');
         const listViewBtn = document.getElementById('list-view-btn');
-        const gridListToggleContainer = document.getElementById('grid-list-toggle-container');
         const folderViewBtn = document.getElementById('folder-view-btn');
         const itemCountDisplayEl = document.getElementById('item-count-display');
         // Lyrics View Elements
@@ -735,6 +776,14 @@
         const lyricsDisplayArea = document.getElementById('lyrics-display-area');
         const lyricsContainer = document.getElementById('lyrics-container');
         const lyricsViewCloseBtn = document.getElementById('lyrics-view-close-btn');
+        // Multi-Download elements
+        const downloadAllBtn = document.getElementById('download-all-btn');
+        const downloadAllProgressTextEl = document.getElementById('download-all-progress-text');
+        const downloadAllCancelBtn = document.getElementById('download-all-cancel-btn');
+        // Sort elements
+        const sortAlphaBtn = document.getElementById('sort-alpha-btn');
+        const sortYearBtn = document.getElementById('sort-year-btn');
+        const sortButtonsContainer = document.getElementById('sort-buttons-container');
 
         // --- Audio State ---
         let audioContext;
@@ -750,6 +799,8 @@
         let _pausedTime = 0;
         let fetchAbortController = null;
         const activeDownloads = new Map();
+        let multiDownloadAbortController = null;
+
 
         // --- Data State ---
         let currentDirectory = '';
@@ -759,12 +810,14 @@
         let currentTrackIndex = -1;
         let currentPlayingFile = null;
         let currentLayoutMode = 'list';
+        let currentSortMode = 'alphabetical';
         let currentMainView = 'folder';
         let playerState = 'super-minimized';
         let isNavigatingViaPopState = false;
         let isLyricsViewActive = false;
         let currentLyrics = null;
         let lastActiveLyricIndex = -1;
+        let searchDebounceTimeout;
 
         // --- Caching ---
         const audioCache = new Map();
@@ -772,6 +825,8 @@
 
         // --- Constants ---
         const VIEW_MODE_FOLDER = 'folder';
+        const SEARCH_CHUNK_SIZE = 100; // Process 100 files at a time to avoid freezing
+        const SEARCH_DEBOUNCE_MS = 250;
 
         // --- Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -786,6 +841,7 @@
             loadArchiveStructure();
             setupEventListeners();
             applyLayoutMode();
+            applySortModeUI();
             applyMainViewMode();
             applyPlayerState();
             showSearchHintIfNeeded();
@@ -827,6 +883,10 @@
              const savedLayoutMode = localStorage.getItem('layoutMode');
              if (savedLayoutMode) currentLayoutMode = savedLayoutMode;
              else currentLayoutMode = 'list';
+            
+             const savedSortMode = localStorage.getItem('sortMode');
+             if (savedSortMode) currentSortMode = savedSortMode;
+             else currentSortMode = 'alphabetical';
 
              const savedMainView = localStorage.getItem('mainView');
              if (savedMainView) currentMainView = savedMainView;
@@ -908,16 +968,22 @@
             return userMessage;
         }
 
-
         function processRawFiles(rawFiles) {
-             const fileMap = new Map(rawFiles.map(f => [f.name, f]));
+             const yearRegex = /\((\d{4})\)$/;
              return rawFiles.map(file => {
                  const path = file.name;
                  let displayName = path.split('/').filter(p => p).pop() || path;
+                 
+                 const yearMatch = displayName.match(yearRegex);
+                 const year = yearMatch ? parseInt(yearMatch[1], 10) : null;
+
                  let isDirectory = path.endsWith('/');
-                 if (!isDirectory && fileMap.size > 1) {
-                      for (const otherPath of fileMap.keys()) {
-                          if (otherPath !== path && otherPath.startsWith(path + '/')) { isDirectory = true; break; }
+                 if (!isDirectory) {
+                      for (const otherPath of rawFiles) {
+                          if (otherPath.name !== path && otherPath.name.startsWith(path + '/')) { 
+                              isDirectory = true; 
+                              break; 
+                          }
                       }
                  }
                  let durationSeconds = file.length && !isNaN(parseFloat(file.length)) ? parseFloat(file.length) : undefined;
@@ -929,15 +995,11 @@
                  return {
                      name: file.name, path: path, size: file.size ? parseInt(file.size) : 0, format: file.format || '',
                      isDirectory: isDirectory, isAudio: !isDirectory && path.toLowerCase().endsWith('.mp3'),
-                     displayName: displayName, duration: durationSeconds,
+                     displayName: displayName, duration: durationSeconds, year: year,
                      artist: apiArtist, album: apiAlbum, title: apiTitle, metadata: null
                  };
              })
-             .filter(file => file.isDirectory || file.isAudio)
-             .sort((a, b) => {
-                 if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
-                 return (a.displayName || '').localeCompare(b.displayName || '', undefined, { numeric: true, sensitivity: 'base' });
-              });
+             .filter(file => file.isDirectory || file.isAudio);
          }
 
         function showInitialLoading() { populateSkeletonLoaders(); showSkeletonLoader(true); statusMessageEl.innerHTML = `<span class="loader"></span>Loading archive... Please wait.`; statusMessageEl.classList.add('visible'); fileBrowserContainerEl.innerHTML = ''; if (itemCountDisplayEl) itemCountDisplayEl.style.display = 'none'; }
@@ -953,7 +1015,7 @@
             updateMainViewToggleButtons();
             updateBreadcrumbs();
             const showFolderControls = currentMainView === VIEW_MODE_FOLDER;
-            gridListToggleContainer.style.display = showFolderControls ? 'flex' : 'none';
+            sortButtonsContainer.style.display = showFolderControls ? 'flex' : 'none';
 
             if (itemCountDisplayEl) {
                 itemCountDisplayEl.style.display = showFolderControls ? 'inline' : 'none';
@@ -1016,7 +1078,51 @@
         function updateMainViewToggleButtons() { folderViewBtn.classList.toggle('active', currentMainView === VIEW_MODE_FOLDER); }
         function setLayoutMode(mode) { if (mode === currentLayoutMode) return; currentLayoutMode = mode; saveSetting('layoutMode', mode); applyLayoutMode(); rerenderCurrentView(); }
         function applyLayoutMode() { gridViewBtn.classList.toggle('active', currentLayoutMode === 'grid'); listViewBtn.classList.toggle('active', currentLayoutMode === 'list'); populateSkeletonLoaders(); if (fileBrowserContainerEl.children.length > 0) fileBrowserContainerEl.className = `file-browser-${currentLayoutMode}`; }
-        function rerenderCurrentView() { showSkeletonLoader(true); fileBrowserContainerEl.innerHTML = ''; requestAnimationFrame(() => { if (searchBox.value && searchContainer.classList.contains('active')) handleSearch(); else if (currentMainView === VIEW_MODE_FOLDER) updateDirectoryView(currentDirectory); else displayStatus("Selected view not available for rerender.", false); }); }
+        function setSortMode(mode) { if (mode === currentSortMode) return; currentSortMode = mode; saveSetting('sortMode', mode); applySortModeUI(); rerenderCurrentView(); }
+        function applySortModeUI() { sortAlphaBtn.classList.toggle('active', currentSortMode === 'alphabetical'); sortYearBtn.classList.toggle('active', currentSortMode === 'year'); }
+        
+        function rerenderCurrentView() { 
+            showSkeletonLoader(true); 
+            fileBrowserContainerEl.innerHTML = ''; 
+            requestAnimationFrame(() => { 
+                if (searchBox.value.trim() && searchContainer.classList.contains('active')) {
+                    handleSearch(); 
+                } else if (currentMainView === VIEW_MODE_FOLDER) {
+                    let items = getItemsInDirectory(allArchiveFiles, currentDirectory);
+                    items = sortItems(items);
+                    currentDirectoryItems = items;
+                    renderFileBrowser(items);
+                    hideSkeletonLoader();
+                } else {
+                    displayStatus("Selected view not available for rerender.", false); 
+                }
+            }); 
+        }
+
+        function sortItems(items) {
+            const effectiveSortMode = (currentDirectory === '' || currentSortMode === 'alphabetical') ? 'alphabetical' : 'year';
+
+            return items.sort((a, b) => {
+                if (a.isDirectory !== b.isDirectory) {
+                    return a.isDirectory ? -1 : 1;
+                }
+
+                if (effectiveSortMode === 'year') {
+                    const yearA = a.year;
+                    const yearB = b.year;
+
+                    if (yearA && yearB) {
+                        if (yearA !== yearB) return yearB - yearA; // Newest first
+                    } else if (yearA) {
+                        return -1; // a has a year, b doesn't. a comes first.
+                    } else if (yearB) {
+                        return 1; // b has a year, a doesn't. b comes first.
+                    }
+                }
+                
+                return (a.displayName || '').localeCompare(b.displayName || '', undefined, { numeric: true, sensitivity: 'base' });
+            });
+        }
 
         function updateDirectoryView(path) {
             if (currentMainView !== VIEW_MODE_FOLDER) return;
@@ -1035,14 +1141,20 @@
 
             showSkeletonLoader(true);
             fileBrowserContainerEl.innerHTML = '';
-            updateBreadcrumbs(); // This will clear search-specific breadcrumbs too
-            const items = getItemsInDirectory(allArchiveFiles, path);
+            updateBreadcrumbs();
+            
+            let items = getItemsInDirectory(allArchiveFiles, currentDirectory);
+            items = sortItems(items);
+            
             currentDirectoryItems = items;
             currentTracklist = items.filter(item => item.isAudio);
             currentTrackIndex = currentPlayingFile ? currentTracklist.findIndex(track => track.path === currentPlayingFile.path) : -1;
+            
             updatePrevNextButtons();
+            updateDownloadAllButtonState();
             updateItemCountDisplay();
-            gridListToggleContainer.style.display = 'flex';
+            sortButtonsContainer.style.display = 'flex';
+            
             requestAnimationFrame(() => {
                 renderFileBrowser(items);
                 hideSkeletonLoader();
@@ -1058,7 +1170,45 @@
             });
         }
 
-        function getItemsInDirectory(allItems, dirPath) { const items = new Map(); const dirPathLength = dirPath.length; allItems.forEach(item => { if (!item.path.startsWith(dirPath) || item.path === dirPath) return; const relativePath = item.path.substring(dirPathLength); const slashIndex = relativePath.indexOf('/'); if (slashIndex === -1) { if (!item.isDirectory) items.set(item.path, item); } else { const firstPart = relativePath.substring(0, slashIndex); const subDirPath = dirPath + firstPart + '/'; if (!items.has(subDirPath)) { let dirEntry = allItems.find(d => d.path === subDirPath && d.isDirectory); if (dirEntry) items.set(subDirPath, dirEntry); else items.set(subDirPath, { name: subDirPath, path: subDirPath, displayName: firstPart, isDirectory: true, isAudio: false, size: 0, format: 'Dir (Synth)' }); } if (item.isDirectory && item.path.endsWith('/') && slashIndex === (relativePath.length - 1)) { if (!items.has(item.path)) items.set(item.path, item); } } }); allItems.forEach(item => { if (item.isDirectory && item.path.startsWith(dirPath) && item.path !== dirPath) { const relativePath = item.path.substring(dirPathLength); if (relativePath.indexOf('/') === relativePath.length - 1) { if (!items.has(item.path)) items.set(item.path, item); } } }); return Array.from(items.values()).sort((a, b) => { if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1; return (a.displayName || '').localeCompare(b.displayName || '', undefined, { numeric: true, sensitivity: 'base' }); }); }
+        function getItemsInDirectory(allItems, dirPath) {
+            const items = new Map();
+            const dirPathLength = dirPath.length;
+            allItems.forEach(item => {
+                if (!item.path.startsWith(dirPath) || item.path === dirPath) return;
+                const relativePath = item.path.substring(dirPathLength);
+                const slashIndex = relativePath.indexOf('/');
+                if (slashIndex === -1) {
+                    if (!item.isDirectory) items.set(item.path, item);
+                } else {
+                    const firstPart = relativePath.substring(0, slashIndex);
+                    const subDirPath = dirPath + firstPart + '/';
+                    if (!items.has(subDirPath)) {
+                        let dirEntry = allArchiveFiles.find(d => d.path === subDirPath && d.isDirectory);
+                        if (dirEntry) items.set(subDirPath, dirEntry);
+                        else {
+                            const yearMatch = firstPart.match(/\((\d{4})\)$/);
+                            const year = yearMatch ? parseInt(yearMatch[1], 10) : null;
+                            items.set(subDirPath, {
+                                name: subDirPath, path: subDirPath, displayName: firstPart, year: year,
+                                isDirectory: true, isAudio: false, size: 0, format: 'Dir (Synth)'
+                            });
+                        }
+                    }
+                    if (item.isDirectory && item.path.endsWith('/') && slashIndex === (relativePath.length - 1)) {
+                        if (!items.has(item.path)) items.set(item.path, item);
+                    }
+                }
+            });
+            allItems.forEach(item => {
+                if (item.isDirectory && item.path.startsWith(dirPath) && item.path !== dirPath) {
+                    const relativePath = item.path.substring(dirPathLength);
+                    if (relativePath.indexOf('/') === relativePath.length - 1) {
+                        if (!items.has(item.path)) items.set(item.path, item);
+                    }
+                }
+            });
+            return Array.from(items.values());
+        }
 
         function renderFileBrowser(items) {
             fileBrowserContainerEl.innerHTML = ''; fileBrowserContainerEl.className = '';
@@ -1112,7 +1262,7 @@
                     icon.innerHTML = '<i class="fas fa-folder"></i>'; 
                     icon.classList.add('folder'); 
                     itemEl.addEventListener('click', (e) => { if (!e.target.closest('.track-download-btn')) updateDirectoryView(item.path); }); 
-                    infoEl.textContent = 'Folder'; 
+                    infoEl.textContent = item.year || 'Folder';
                 } else if (item.isAudio) { 
                     icon.innerHTML = '<i class="fas fa-music"></i>'; 
                     itemEl.addEventListener('click', (e) => { if (!e.target.closest('.track-download-btn, .item-jump-to-folder-btn')) playAudioFile(item, currentTracklist); }); 
@@ -1160,7 +1310,7 @@
                     icon.innerHTML = '<i class="fas fa-folder"></i>'; 
                     icon.classList.add('folder'); 
                     itemEl.addEventListener('click', (e) => { if (!e.target.closest('.track-download-btn')) updateDirectoryView(item.path); }); 
-                    sizeEl.textContent = 'Folder'; 
+                    sizeEl.textContent = item.year || 'Folder'; 
                     itemEl.style.cursor = 'pointer'; 
                 } else if (item.isAudio) { 
                     icon.innerHTML = '<i class="fas fa-music"></i>'; 
@@ -1193,7 +1343,7 @@
 
         function updateBreadcrumbs() {
             directoryPathEl.innerHTML = '';
-            if (searchBox.value && searchContainer.classList.contains('active')) {
+            if (searchBox.value.trim() && searchContainer.classList.contains('active')) {
                 const searchCrumbContainer = document.createElement('div');
                 searchCrumbContainer.style.display = 'flex';
                 searchCrumbContainer.style.alignItems = 'center';
@@ -1242,7 +1392,7 @@
                 if (isLyricsViewActive) toggleLyricsView();
                 searchContainer.classList.add('active');
                 searchBox.focus();
-                if (searchBox.value) handleSearch();
+                if (searchBox.value.trim()) handleSearch();
             } else {
                 searchContainer.classList.remove('active');
                 searchBox.blur();
@@ -1253,47 +1403,80 @@
         }
 
         function handleSearch() {
-            showSkeletonLoader(true); fileBrowserContainerEl.innerHTML = '';
-            const searchTermRaw = searchBox.value.trim();
+            clearTimeout(searchDebounceTimeout);
+            searchDebounceTimeout = setTimeout(() => {
+                const searchTerm = searchBox.value.trim();
+                if (searchTerm) {
+                    performSearch(searchTerm);
+                } else {
+                    updateDirectoryView(currentDirectory); // Go back to folder view if search is cleared
+                }
+            }, SEARCH_DEBOUNCE_MS);
+        }
 
-            if (!searchTermRaw) {
-                hideSkeletonLoader();
-                updateDirectoryView(currentDirectory);
-                return;
-            }
+        async function performSearch(searchTerm) {
+            showSkeletonLoader(true);
+            fileBrowserContainerEl.innerHTML = '';
+            statusMessageEl.innerHTML = `<span class="loader"></span>Searching...`;
+            statusMessageEl.classList.add('visible');
 
-            const searchWords = searchTermRaw.toLowerCase().split(/\s+/).filter(word => word.length > 0);
+            const searchWords = searchTerm.toLowerCase().split(/\s+/).filter(word => word.length > 0);
+            const results = [];
 
-            const results = allArchiveFiles.filter(file => {
-                if (file.isDirectory || !file.isAudio) return false;
-                const pathLower = file.path.toLowerCase();
+            const filesToSearch = allArchiveFiles.filter(file => file.isAudio);
+
+            for (let i = 0; i < filesToSearch.length; i++) {
+                const file = filesToSearch[i];
                 const titleLower = (file.title || file.displayName || '').toLowerCase();
                 const artistLower = (file.artist || '').toLowerCase();
                 const albumLower = (file.album || '').toLowerCase();
-                const combinedMeta = `${pathLower} ${titleLower} ${artistLower} ${albumLower}`;
-                return searchWords.every(word => combinedMeta.includes(word));
-            }).sort((a, b) => (a.title || a.displayName).localeCompare(b.title || b.displayName));
+                const pathLower = file.path.toLowerCase();
+
+                const combinedMeta = `${titleLower} ${artistLower} ${albumLower} ${pathLower}`;
+
+                if (searchWords.every(word => combinedMeta.includes(word))) {
+                    let score = 0;
+                    if (titleLower === searchTerm) {
+                        score = 100; // Exact title match
+                    } else if (titleLower.startsWith(searchTerm)) {
+                        score = 90; // Starts with
+                    } else if (searchWords.every(word => titleLower.includes(word))) {
+                        score = 50; // All words in title
+                    } else {
+                        score = 10; // Found elsewhere
+                    }
+                    results.push({ ...file, score });
+                }
+
+                if ((i + 1) % SEARCH_CHUNK_SIZE === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
+            }
+
+            results.sort((a, b) => {
+                if (b.score !== a.score) {
+                    return b.score - a.score;
+                }
+                return (a.title || a.displayName).localeCompare(b.title || b.displayName);
+            });
 
             currentDirectoryItems = results;
             currentTracklist = results;
             currentTrackIndex = currentPlayingFile ? currentTracklist.findIndex(track => track.path === currentPlayingFile.path) : -1;
+            
             updatePrevNextButtons();
+            updateDownloadAllButtonState();
             updateItemCountDisplay();
             updateBreadcrumbs();
-            gridListToggleContainer.style.display = 'flex';
-            requestAnimationFrame(() => {
-                renderFileBrowser(results);
-                hideSkeletonLoader();
-                if (results.length === 0) {
-                     if (statusMessageEl.classList.contains('visible') && !statusMessageEl.textContent.toLowerCase().includes('error')) {
-                         hideLoading();
-                    }
-                } else {
-                     hideLoading();
-                }
-            });
-        }
+            
+            sortButtonsContainer.style.display = 'none';
 
+            renderFileBrowser(results);
+            hideSkeletonLoader();
+            if (results.length > 0) {
+                hideLoading();
+            }
+        }
 
         async function getMetadataFromTags(file, arrayBuffer) { return new Promise((resolve) => { if (typeof jsmediatags === 'undefined') { resolve({}); return; } jsmediatags.read(new Blob([arrayBuffer]), { onSuccess: (tag) => resolve({ title: tag.tags.title, artist: tag.tags.artist, album: tag.tags.album, picture: tag.tags.picture }), onError: (error) => { console.warn('jsmediatags error:', file?.path, error.type, error.info); resolve({}); } }); }); }
         function displayMetadataInPlayer(metadata) {
@@ -1387,7 +1570,7 @@
             };
 
             try {
-                const arrayBuffer = await fetchWithTimeoutAndRetry(`${archiveDownloadUrlBase}/${encodeURIComponent(file.path)}`, FETCH_TIMEOUT_MS, MAX_RETRIES, true, progressCb);
+                const arrayBuffer = await fetchWithTimeoutAndRetry({url: `${archiveDownloadUrlBase}/${encodeURIComponent(file.path)}`, isForPlayback: true, progressCallback: progressCb});
                 if (!currentPlayingFile || file.path !== currentPlayingFile.path) { cleanupPlaybackResources(); return; }
                 
                 updatePlayerUI(true, 'Decoding...');
@@ -1427,20 +1610,20 @@
                 }
             }
         }
-        async function fetchWithTimeoutAndRetry(url, timeout, retries, isForPlayback = false, progressCallback = null) {
-            let attempts = 0; let currentFetchController = null;
-            if (isForPlayback) { if (fetchAbortController) { console.log("Aborting previous fetch for new playback request"); fetchAbortController.abort("New playback fetch"); } fetchAbortController = new AbortController(); currentFetchController = fetchAbortController; }
-            else { currentFetchController = new AbortController(); }
-            const { signal } = currentFetchController;
+        async function fetchWithTimeoutAndRetry({url, timeout = FETCH_TIMEOUT_MS, retries = MAX_RETRIES, progressCallback = null, externalSignal = null}) {
+            let attempts = 0; 
+            const internalController = new AbortController();
+            
+            const signal = externalSignal || internalController.signal;
+            const combinedAbortHandler = () => { internalController.abort("External signal aborted"); };
+            if(externalSignal) externalSignal.addEventListener('abort', combinedAbortHandler, {once: true});
 
             while (attempts <= retries) {
-                attempts++; const timeoutId = setTimeout(() => currentFetchController.abort("Timeout"), timeout);
+                attempts++; const timeoutId = setTimeout(() => internalController.abort("Timeout"), timeout);
                 try {
+                    if (signal.aborted) throw new Error("Operation aborted before starting fetch.");
                     if (attempts > 1) {
-                        console.log(`Retrying fetch (Attempt ${attempts}/${retries + 1})... Context: ${isForPlayback ? 'Playback' : 'Download'}`);
-                        if (isForPlayback) {
-                            updatePlayerUI(true, `Retrying (${attempts}/${retries})...`);
-                        }
+                        console.log(`Retrying fetch (Attempt ${attempts}/${retries + 1})`);
                         await new Promise(resolve => setTimeout(resolve, 500 * (attempts -1) ));
                     }
                     const response = await fetch(url, { signal }); clearTimeout(timeoutId);
@@ -1450,40 +1633,39 @@
                     if (progressCallback && response.body) {
                         const contentLength = response.headers.get('content-length'); const totalBytes = contentLength ? parseInt(contentLength, 10) : 0; let receivedBytes = 0;
                         const reader = response.body.getReader(); const chunks = [];
-                        if (isForPlayback && attempts === 1) progressCallback(0, totalBytes, receivedBytes);
+                        if (attempts === 1) progressCallback(0, totalBytes, receivedBytes);
                         
                         while (true) {
                             if (signal.aborted) throw new Error("Fetch aborted during chunk reading.");
                             const { done, value } = await reader.read(); if (done) break; chunks.push(value); receivedBytes += value.length;
-                            if (isForPlayback) {
-                                if (totalBytes > 0) { const percent = (receivedBytes / totalBytes) * 100; progressCallback(percent, totalBytes, receivedBytes); }
-                                else { progressCallback(-1, totalBytes, receivedBytes); }
-                            }
+                            if (totalBytes > 0) { const percent = (receivedBytes / totalBytes) * 100; progressCallback(percent, totalBytes, receivedBytes); }
+                            else { progressCallback(-1, totalBytes, receivedBytes); }
                         }
                         if (signal.aborted) throw new Error(`Aborted after body: ${signal.reason}`);
                         const combined = new Uint8Array(receivedBytes); let offset = 0;
                         for (const chunk of chunks) { combined.set(chunk, offset); offset += chunk.length; }
-                        if (isForPlayback && currentFetchController === fetchAbortController) fetchAbortController = null;
-                        if (isForPlayback) progressCallback(100, totalBytes, receivedBytes);
+                        progressCallback(100, totalBytes, receivedBytes);
+                        if(externalSignal) externalSignal.removeEventListener('abort', combinedAbortHandler);
                         return combined.buffer;
                     } else {
                         const arrayBuffer = await response.arrayBuffer(); if (signal.aborted) throw new Error(`Aborted after body: ${signal.reason}`);
-                        if (isForPlayback && currentFetchController === fetchAbortController) fetchAbortController = null; return arrayBuffer;
+                        if(externalSignal) externalSignal.removeEventListener('abort', combinedAbortHandler);
+                        return arrayBuffer;
                     }
                 } catch (error) {
                     clearTimeout(timeoutId);
-                    console.error(`Fetch error (Attempt ${attempts}, URL: ${isForPlayback ? 'Playback URL' : 'Download URL'}):`, error);
+                    if(externalSignal) externalSignal.removeEventListener('abort', combinedAbortHandler);
+
                     if (error.name === 'AbortError') {
-                        if (isForPlayback && currentFetchController === fetchAbortController) fetchAbortController = null;
                         throw error;
                     }
+                    console.error(`Fetch error (Attempt ${attempts}):`, error);
                     if (attempts > retries) {
-                        if (isForPlayback && currentFetchController === fetchAbortController) fetchAbortController = null;
                         throw new Error(`Fetch failed after ${retries + 1} attempts: ${error.message}`);
                     }
                 }
             }
-            throw new Error(`Fetch failed unexpectedly. Context: ${isForPlayback ? 'Playback' : 'Download'}`);
+            throw new Error(`Fetch failed unexpectedly.`);
         }
         function cleanupPlaybackResources() { clearInterval(progressUpdateInterval); progressUpdateInterval = null; if (sourceNode) { try { sourceNode.onended = null; sourceNode.disconnect(); if (isPlaying || audioContext?.state === 'running') sourceNode.stop(); } catch (e) {} sourceNode = null; } if (fetchAbortController) { fetchAbortController.abort("Playback stopped/changed"); fetchAbortController = null; } }
         function startPlayback(offset = 0) { if (!currentAudioBuffer || !audioContext || !gainNode) { stopPlayback(true); return; } if (audioContext.state === 'suspended') audioContext.resume().then(() => _performStartPlayback(offset)).catch(err => { console.error("Resume failed", err); stopPlayback(true); }); else _performStartPlayback(offset); }
@@ -1812,6 +1994,7 @@
             
             const title = file.metadata?.title || file.title || file.displayName;
             const artist = file.metadata?.artist || file.artist;
+            const album = file.metadata?.album || file.album;
 
             if (!artist || !title || artist === UNKNOWN_ARTIST) {
                 lyricsContainer.innerHTML = `<p class="lyrics-status">Not enough info to find lyrics.</p>`;
@@ -1822,6 +2005,9 @@
                 const url = new URL(lyricsApiUrl);
                 url.searchParams.append('track_name', title);
                 url.searchParams.append('artist_name', artist);
+                if (album && album !== UNKNOWN_ALBUM) {
+                    url.searchParams.append('album_name', album);
+                }
                 
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`Lyrics API error: ${response.status}`);
@@ -1898,11 +2084,124 @@
             }
         }
 
+        // --- Multi-Download Functions ---
+        function updateDownloadAllButtonState() {
+            if (!downloadAllBtn) return;
+            if (downloadAllBtn.classList.contains('loading')) return;
+
+            const tracksInView = currentDirectoryItems.filter(item => item.isAudio);
+            if (tracksInView.length > 0) {
+                downloadAllBtn.disabled = false;
+                downloadAllBtn.title = `Download ${tracksInView.length} track${tracksInView.length > 1 ? 's' : ''} as a ZIP`;
+            } else {
+                downloadAllBtn.disabled = true;
+                downloadAllBtn.title = "No tracks to download in this view";
+            }
+        }
+
+        async function triggerMultiDownload() {
+            if (downloadAllBtn.classList.contains('loading')) return;
+
+            const tracksToDownload = currentDirectoryItems.filter(item => item.isAudio);
+            if (tracksToDownload.length === 0) {
+                alert("There are no audio files in the current view to download.");
+                return;
+            }
+            
+            multiDownloadAbortController = new AbortController();
+            downloadAllBtn.classList.add('loading');
+            downloadAllBtn.disabled = true;
+
+            let zip = new JSZip();
+            const failedFiles = [];
+            const totalTracks = tracksToDownload.length;
+
+            try {
+                for (const [index, track] of tracksToDownload.entries()) {
+                    if (multiDownloadAbortController.signal.aborted) throw new Error("Download cancelled by user.");
+                    
+                    const overallProgressText = `Downloading ${index + 1}/${totalTracks}`;
+                    downloadAllProgressTextEl.textContent = `${overallProgressText}...`;
+                    console.log(`Downloading file ${index + 1}: ${track.displayName}`);
+                    
+                    const progressCallbackForFile = (percent, totalBytes, receivedBytes) => {
+                        let progressIndicator = "";
+                        if(percent === -1) {
+                            progressIndicator = formatFileSize(receivedBytes);
+                        } else {
+                            progressIndicator = `${Math.round(percent)}%`;
+                        }
+                        downloadAllProgressTextEl.textContent = `${overallProgressText} (${progressIndicator})...`;
+                    };
+
+                    try {
+                        const fileUrl = `${archiveDownloadUrlBase}/${encodeURIComponent(track.path)}`;
+                        const buffer = await fetchWithTimeoutAndRetry({url: fileUrl, externalSignal: multiDownloadAbortController.signal, progressCallback: progressCallbackForFile});
+                        zip.file(track.displayName, buffer);
+                    } catch (error) {
+                         if (error.name !== 'AbortError') {
+                            console.error(`Failed to download ${track.displayName}:`, error);
+                            failedFiles.push(track.displayName);
+                         } else {
+                             throw error;
+                         }
+                    }
+                }
+
+                if (multiDownloadAbortController.signal.aborted) throw new Error("Download cancelled by user.");
+
+                downloadAllProgressTextEl.textContent = 'Zipping files...';
+                const zipBlob = await zip.generateAsync({
+                    type: "blob",
+                    compression: "DEFLATE",
+                    compressionOptions: { level: 1 }
+                }, (metadata) => {
+                    downloadAllProgressTextEl.textContent = `Zipping: ${Math.round(metadata.percent)}%`;
+                });
+                
+                if (multiDownloadAbortController.signal.aborted) throw new Error("Download cancelled during zipping.");
+
+                let zipFileName = "archive.zip";
+                const isSearchMode = searchBox.value.trim() !== '' && searchContainer.classList.contains('active');
+                if (isSearchMode) {
+                    zipFileName = "search-results.zip";
+                } else if (currentDirectory) {
+                    const folderName = currentDirectory.split('/').filter(p => p).pop();
+                    if(folderName) zipFileName = `${folderName}.zip`;
+                }
+
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(zipBlob);
+                link.download = zipFileName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+
+                if (failedFiles.length > 0) {
+                    alert(`Download complete, but some files failed:\n- ${failedFiles.join('\n- ')}`);
+                }
+
+            } catch (error) {
+                if (error.name === 'AbortError' || error.message.includes("cancelled")) {
+                    alert("Download cancelled.");
+                } else {
+                    alert(`An error occurred during the download process: ${error.message}`);
+                    console.error("Multi-download failed:", error);
+                }
+            } finally {
+                console.log("Multi-download process finished or was cancelled. Cleaning up memory.");
+                downloadAllBtn.classList.remove('loading');
+                updateDownloadAllButtonState();
+                multiDownloadAbortController = null;
+                zip = null;
+            }
+        }
 
         function setupEventListeners() {
             searchToggleBtn.addEventListener('click', () => toggleSearch());
             searchBox.addEventListener('input', handleSearch);
-            searchBox.addEventListener('search', () => { if (!searchBox.value) { if (directoryPathEl.querySelector('.exit-search-btn')) { updateDirectoryView(currentDirectory); } } else { handleSearch(); } });
+            searchBox.addEventListener('search', () => { if (!searchBox.value.trim()) { if (directoryPathEl.querySelector('.exit-search-btn')) { updateDirectoryView(currentDirectory); } } else { handleSearch(); } });
             searchBox.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSearch(); });
             
             document.addEventListener('keydown', (e) => {
@@ -1943,7 +2242,11 @@
             pitchSlider.addEventListener('input', () => { const newRate = parseFloat(pitchSlider.value); if (newRate === currentPlaybackRate) return; currentPlaybackRate = newRate; if (sourceNode && audioContext) { const currentTime = getCurrentPlaybackTime(); sourceNode.playbackRate.setTargetAtTime(currentPlaybackRate, audioContext.currentTime, 0.015); if (isPlaying) { _startOffset = currentTime; _startTime = audioContext.currentTime; } } });
             pitchSlider.addEventListener('change', () => saveSetting('playerRate', currentPlaybackRate));
             revertSpeedBtn.addEventListener('click', () => { currentPlaybackRate = 1.0; pitchSlider.value = currentPlaybackRate; if (sourceNode && audioContext) { const currentTime = getCurrentPlaybackTime(); sourceNode.playbackRate.setTargetAtTime(currentPlaybackRate, audioContext.currentTime, 0.015); if (isPlaying) { _startOffset = currentTime; _startTime = audioContext.currentTime; } } saveSetting('playerRate', currentPlaybackRate); });
-            folderViewBtn.addEventListener('click', () => setMainViewMode(VIEW_MODE_FOLDER)); gridViewBtn.addEventListener('click', () => setLayoutMode('grid')); listViewBtn.addEventListener('click', () => setLayoutMode('list'));
+            folderViewBtn.addEventListener('click', () => setMainViewMode(VIEW_MODE_FOLDER)); 
+            gridViewBtn.addEventListener('click', () => setLayoutMode('grid')); 
+            listViewBtn.addEventListener('click', () => setLayoutMode('list'));
+            sortAlphaBtn.addEventListener('click', () => setSortMode('alphabetical'));
+            sortYearBtn.addEventListener('click', () => setSortMode('year'));
             
             fileBrowserContainerEl.addEventListener('click', (event) => {
                 const downloadButton = event.target.closest('.track-download-btn');
@@ -1981,9 +2284,6 @@
                     
                     if (currentMainView !== VIEW_MODE_FOLDER) { 
                         setMainViewMode(VIEW_MODE_FOLDER); 
-                        // The setMainViewMode function will eventually call updateDirectoryView,
-                        // but we want it to go to the *new* folder path.
-                        // So we update the global `currentDirectory` and let it handle the rest.
                         currentDirectory = folderPath;
                     } else {
                         updateDirectoryView(folderPath);
@@ -2004,6 +2304,15 @@
                     if (!isNaN(time)) {
                         seekTo(time);
                     }
+                }
+            });
+
+            // Multi-download listeners
+            downloadAllBtn.addEventListener('click', triggerMultiDownload);
+            downloadAllCancelBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // prevent the main button click from firing
+                if (multiDownloadAbortController) {
+                    multiDownloadAbortController.abort();
                 }
             });
 
