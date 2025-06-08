@@ -140,7 +140,7 @@
         .skeleton-text { width: 80%; height: 1em; background-color: var(--skeleton-bg); border-radius: 3px; margin-bottom: 8px; }
         .skeleton-text.short { width: 50%; height: 0.8em; }
         .file-item-list.skeleton { height: 45px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 5px; }
-        .file-browser-list .skeleton-icon { width: 20px; height: 20px; margin-bottom: 0; flex-shrink: 0; }
+        .file-browser-list .skeleton-icon { width: 36px; height: 36px; margin-bottom: 0; flex-shrink: 0; }
         .file-browser-list .skeleton-text { height: 0.9em; margin-bottom: 0; flex-grow: 1; }
         .file-browser-list .skeleton-text.short { width: 50px; flex-grow: 0; flex-shrink: 0; margin-left: auto; }
 
@@ -211,10 +211,12 @@
 
         /* --- Grid View --- */
         .file-browser-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
-        .file-item-grid { background-color: var(--bg-secondary); border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s ease-in-out; border: 1px solid var(--border-color); overflow: hidden; display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; }
+        .file-item-grid { background-color: var(--bg-secondary); border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s ease-in-out; border: 1px solid var(--border-color); overflow: hidden; display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; justify-content: flex-start; }
         .file-item-grid:hover { background-color: var(--list-item-hover); transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); }
-        .file-icon-grid { font-size: 2.5rem; margin-bottom: 12px; color: var(--icon-color-accent); line-height: 1; }
-        .file-icon-grid.folder { color: var(--icon-color-container); }
+        .file-icon-grid { margin-bottom: 12px; color: var(--icon-color-accent); line-height: 1; width: 100%; height: 0; padding-bottom: 100%; position: relative; background-color: var(--bg-tertiary); border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .file-icon-grid > i { font-size: 2.5rem; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .file-icon-grid.folder { color: var(--icon-color-container); background-color: transparent; }
+        .grid-view-cover-art { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; background-color: var(--bg-tertiary); }
         .file-name-grid { font-size: 0.9rem; font-weight: 500; white-space: normal; overflow-wrap: break-word; word-break: break-all; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; margin-bottom: 5px; max-height: calc(1.3em * 3); }
         .file-info-grid { font-size: 0.75rem; color: var(--text-secondary); margin-top: auto; min-height: 1em; }
         .file-item-grid .track-download-btn { position: absolute; bottom: 8px; right: 8px; background-color: rgba(0,0,0,0.3); backdrop-filter: blur(2px); font-size: 0.9rem; width: 24px; height: 24px; }
@@ -227,8 +229,9 @@
          .file-item-list:hover { background-color: var(--list-item-hover); border-color: var(--border-color); }
          .file-item-list.non-interactive { cursor: default; opacity: 0.6; }
          .file-item-list.non-interactive:hover { background-color: var(--bg-secondary); border-color: transparent; }
-         .file-icon-list { font-size: 1.2rem; color: var(--icon-color-accent); line-height: 1; width: 20px; text-align: center; flex-shrink: 0; }
-         .file-icon-list.folder { color: var(--icon-color-container); }
+         .file-icon-list { font-size: 1.2rem; color: var(--icon-color-accent); line-height: 1; width: 36px; height: 36px; text-align: center; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background-color: var(--bg-tertiary); border-radius: 4px; overflow: hidden; }
+         .file-icon-list.folder { color: var(--icon-color-container); background-color: transparent; }
+         .list-view-cover-art { width: 100%; height: 100%; object-fit: cover; }
          .file-name-list { font-size: 0.95rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; line-height: 1.3; cursor: pointer; transition: color 0.2s ease; }
          .file-item-list.non-interactive .file-name-list { cursor: default; }
          .file-info-list { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 100px; text-align: right; flex-shrink: 0; }
@@ -805,6 +808,7 @@
         // --- Data State ---
         let currentDirectory = '';
         let allArchiveFiles = [];
+        let folderCovers = new Map();
         let currentDirectoryItems = [];
         let currentTracklist = [];
         let currentTrackIndex = -1;
@@ -969,38 +973,58 @@
         }
 
         function processRawFiles(rawFiles) {
-             const yearRegex = /\((\d{4})\)$/;
-             return rawFiles.map(file => {
-                 const path = file.name;
-                 let displayName = path.split('/').filter(p => p).pop() || path;
-                 
-                 const yearMatch = displayName.match(yearRegex);
-                 const year = yearMatch ? parseInt(yearMatch[1], 10) : null;
+            const coverImageRegex = /cover\.(jpe?g|png|gif|webp)$/i;
 
-                 let isDirectory = path.endsWith('/');
-                 if (!isDirectory) {
-                      for (const otherPath of rawFiles) {
-                          if (otherPath.name !== path && otherPath.name.startsWith(path + '/')) { 
-                              isDirectory = true; 
-                              break; 
+            // First pass to find all cover images and map them by folder
+            folderCovers.clear();
+            rawFiles.forEach(file => {
+                const pathParts = file.name.split('/');
+                const fileName = pathParts.pop();
+                if (coverImageRegex.test(fileName)) {
+                    const folderPath = pathParts.join('/') + (pathParts.length > 0 ? '/' : '');
+                    if (!folderCovers.has(folderPath)) {
+                        folderCovers.set(folderPath, `${archiveDownloadUrlBase}/${encodeURIComponent(file.name)}`);
+                    }
+                }
+            });
+
+             const yearRegex = /\((\d{4})\)$/;
+             return rawFiles
+                .map(file => {
+                     const path = file.name;
+                     let displayName = path.split('/').filter(p => p).pop() || path;
+                     
+                     const yearMatch = displayName.match(yearRegex);
+                     const year = yearMatch ? parseInt(yearMatch[1], 10) : null;
+
+                     let isDirectory = path.endsWith('/');
+                     if (!isDirectory) {
+                          for (const otherPath of rawFiles) {
+                              if (otherPath.name !== path && otherPath.name.startsWith(path + '/')) { 
+                                  isDirectory = true; 
+                                  break; 
+                              }
                           }
-                      }
-                 }
-                 let durationSeconds = file.length && !isNaN(parseFloat(file.length)) ? parseFloat(file.length) : undefined;
-                 let apiArtist = file.creator || file.artist || null;
-                 let apiAlbum = file.album || null;
-                 let apiTitle = file.title || null;
-                 if (apiArtist && typeof apiArtist === 'string') apiArtist = apiArtist.split(';')[0].trim();
-                 if (apiAlbum && typeof apiAlbum === 'string') apiAlbum = apiAlbum.split(';')[0].trim();
-                 return {
-                     name: file.name, path: path, size: file.size ? parseInt(file.size) : 0, format: file.format || '',
-                     isDirectory: isDirectory, isAudio: !isDirectory && path.toLowerCase().endsWith('.mp3'),
-                     displayName: displayName, duration: durationSeconds, year: year,
-                     artist: apiArtist, album: apiAlbum, title: apiTitle, metadata: null
-                 };
-             })
-             .filter(file => file.isDirectory || file.isAudio);
-         }
+                     }
+                     let durationSeconds = file.length && !isNaN(parseFloat(file.length)) ? parseFloat(file.length) : undefined;
+                     let apiArtist = file.creator || file.artist || null;
+                     let apiAlbum = file.album || null;
+                     let apiTitle = file.title || null;
+                     if (apiArtist && typeof apiArtist === 'string') apiArtist = apiArtist.split(';')[0].trim();
+                     if (apiAlbum && typeof apiAlbum === 'string') apiAlbum = apiAlbum.split(';')[0].trim();
+                     return {
+                         name: file.name, path: path, size: file.size ? parseInt(file.size) : 0, format: file.format || '',
+                         isDirectory: isDirectory, isAudio: !isDirectory && path.toLowerCase().endsWith('.mp3'),
+                         displayName: displayName, duration: durationSeconds, year: year,
+                         artist: apiArtist, album: apiAlbum, title: apiTitle, metadata: null
+                     };
+                })
+                .filter(file => {
+                    // Filter out the cover images themselves from the browsable list
+                    const fileName = file.path.split('/').pop();
+                    return (file.isDirectory || file.isAudio) && !coverImageRegex.test(fileName);
+                });
+        }
 
         function showInitialLoading() { populateSkeletonLoaders(); showSkeletonLoader(true); statusMessageEl.innerHTML = `<span class="loader"></span>Loading archive... Please wait.`; statusMessageEl.classList.add('visible'); fileBrowserContainerEl.innerHTML = ''; if (itemCountDisplayEl) itemCountDisplayEl.style.display = 'none'; }
         function hideInitialLoading() { hideSkeletonLoader(); if (statusMessageEl.textContent.includes("Loading archive")) { statusMessageEl.classList.remove('visible'); statusMessageEl.innerHTML = ''; } }
@@ -1210,6 +1234,12 @@
             return Array.from(items.values());
         }
 
+        function getCoverForFile(filePath) {
+            if (!filePath) return null;
+            const folderPath = filePath.substring(0, filePath.lastIndexOf('/') + 1);
+            return folderCovers.get(folderPath) || null;
+        }
+
         function renderFileBrowser(items) {
             fileBrowserContainerEl.innerHTML = ''; fileBrowserContainerEl.className = '';
             if (items.length === 0) {
@@ -1264,7 +1294,12 @@
                     itemEl.addEventListener('click', (e) => { if (!e.target.closest('.track-download-btn')) updateDirectoryView(item.path); }); 
                     infoEl.textContent = item.year || 'Folder';
                 } else if (item.isAudio) { 
-                    icon.innerHTML = '<i class="fas fa-music"></i>'; 
+                    const coverUrl = getCoverForFile(item.path);
+                    if (coverUrl) {
+                        icon.innerHTML = `<img src="${coverUrl}" alt="Cover" class="grid-view-cover-art">`;
+                    } else {
+                        icon.innerHTML = '<i class="fas fa-music"></i>'; 
+                    }
                     itemEl.addEventListener('click', (e) => { if (!e.target.closest('.track-download-btn, .item-jump-to-folder-btn')) playAudioFile(item, currentTracklist); }); 
                     infoEl.textContent = formatFileSize(item.size); 
                     if (isSearchMode) {
@@ -1313,7 +1348,12 @@
                     sizeEl.textContent = item.year || 'Folder'; 
                     itemEl.style.cursor = 'pointer'; 
                 } else if (item.isAudio) { 
-                    icon.innerHTML = '<i class="fas fa-music"></i>'; 
+                    const coverUrl = getCoverForFile(item.path);
+                    if (coverUrl) {
+                        icon.innerHTML = `<img src="${coverUrl}" alt="Cover" class="list-view-cover-art">`;
+                    } else {
+                        icon.innerHTML = '<i class="fas fa-music"></i>'; 
+                    }
                     nameEl.addEventListener('click', () => playAudioFile(item, currentTracklist)); 
                     durationEl.textContent = item.duration ? formatTime(item.duration) : '--:--'; 
                     durationEl.dataset.path = item.path; 
@@ -1479,6 +1519,7 @@
         }
 
         async function getMetadataFromTags(file, arrayBuffer) { return new Promise((resolve) => { if (typeof jsmediatags === 'undefined') { resolve({}); return; } jsmediatags.read(new Blob([arrayBuffer]), { onSuccess: (tag) => resolve({ title: tag.tags.title, artist: tag.tags.artist, album: tag.tags.album, picture: tag.tags.picture }), onError: (error) => { console.warn('jsmediatags error:', file?.path, error.type, error.info); resolve({}); } }); }); }
+        
         function displayMetadataInPlayer(metadata) {
             const title = metadata?.title || currentPlayingFile?.title || currentPlayingFile?.displayName || 'Unknown Title';
             const artist = metadata?.artist || currentPlayingFile?.artist || UNKNOWN_ARTIST;
@@ -1494,7 +1535,10 @@
             albumArtLoader.classList.remove('visible');
             albumArtIcon.classList.remove('hidden');
             albumArtImg.classList.remove('loaded', 'loading'); albumArtImg.src = ''; albumArtImg.removeAttribute('style');
+            
+            let artFound = false;
 
+            // 1. Try embedded art
             if (metadata?.picture && metadata.picture.data) {
                 try {
                     const { data, format } = metadata.picture; let base64String = "";
@@ -1504,9 +1548,28 @@
                     albumArtImg.onerror = function() { this.classList.remove('loading'); albumArtIcon.classList.remove('hidden'); };
                     albumArtImg.classList.add('loading');
                     albumArtImg.src = imageUrl;
-                } catch (e) { console.error("Error processing album art:", e); albumArtIcon.classList.remove('hidden'); }
-            } else { albumArtIcon.classList.remove('hidden'); }
+                    artFound = true;
+                } catch (e) { console.error("Error processing album art:", e); }
+            }
+
+            // 2. If no embedded art, try folder cover
+            if (!artFound && currentPlayingFile) {
+                const coverUrl = getCoverForFile(currentPlayingFile.path);
+                if (coverUrl) {
+                    albumArtImg.onload = function() { setTimeout(() => { this.classList.remove('loading'); this.classList.add('loaded'); albumArtIcon.classList.add('hidden'); }, 50); };
+                    albumArtImg.onerror = function() { this.classList.remove('loading'); albumArtIcon.classList.remove('hidden'); };
+                    albumArtImg.classList.add('loading');
+                    albumArtImg.src = coverUrl;
+                    artFound = true;
+                }
+            }
+            
+            // 3. If still no art, ensure icon is visible
+            if (!artFound) {
+                albumArtIcon.classList.remove('hidden');
+            }
         }
+
         function updateFileDurationInList(filePath, durationSeconds) { if (currentLayoutMode !== 'list' || !durationSeconds || !isFinite(durationSeconds)) return; const durationStr = formatTime(durationSeconds); const escapedPath = CSS.escape(filePath); const durationElement = fileBrowserContainerEl.querySelector(`.file-duration-list[data-path="${escapedPath}"]`); if (durationElement && durationElement.textContent !== durationStr) durationElement.textContent = durationStr; }
 
         function manageCache(filePath, data) { if (audioCache.size >= MAX_CACHE_SIZE) { const oldestPath = cacheOrder.shift(); if (oldestPath) audioCache.delete(oldestPath); } audioCache.set(filePath, { ...data, timestamp: Date.now() }); cacheOrder.push(filePath); }
