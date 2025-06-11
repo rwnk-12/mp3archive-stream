@@ -25,7 +25,7 @@
             --volume-track: #535353;
             --volume-thumb: #ffffff;
             --border-color: #2a2a2a;
-            --highlight-color: rgba(255, 55, 95, 0.15); /* Slightly more subtle highlight */
+            --highlight-color: rgba(255, 55, 95, 0.15);
             --card-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
             --player-shadow: 0 -8px 24px rgba(0, 0, 0, 0.7);
             --hint-bg: #282828;
@@ -41,6 +41,7 @@
             --download-progress-fill: var(--accent-color);
             --lyrics-text-color: var(--text-secondary);
             --lyrics-active-color: var(--text-primary);
+            --grid-artwork-bg: #2a2a2a;
         }
 
         /* --- Base Styles --- */
@@ -56,13 +57,13 @@
         }
         
         body.lyrics-view-active {
-            overflow: hidden; /* Prevent scrolling of main content behind lyrics view */
+            overflow: hidden;
         }
         
         body.lyrics-view-active .container,
         body.lyrics-view-active .header,
         body.lyrics-view-active .controls-bar {
-            display: none; /* Hide main content when lyrics view is active */
+            display: none;
         }
 
         .container {
@@ -135,14 +136,16 @@
         .skeleton { background-color: var(--bg-secondary); border-color: var(--border-color); pointer-events: none; position: relative; overflow: hidden; }
         .skeleton::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, var(--skeleton-highlight), transparent); animation: skeleton-shine 1.3s infinite linear; }
         @keyframes skeleton-shine { 0% { left: -100%; } 100% { left: 100%; } }
-        .file-item-grid.skeleton { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 15px; border-radius: 8px; border: 1px solid transparent; }
-        .skeleton-icon { width: 40px; height: 40px; background-color: var(--skeleton-bg); border-radius: 4px; margin-bottom: 12px; }
+        /* Grid Skeleton */
+        .file-item-grid.skeleton { display: flex; flex-direction: column; background-color: transparent; padding: 10px; }
+        .skeleton-artwork { width: 100%; padding-top: 100%; background-color: var(--skeleton-bg); border-radius: 8px; margin-bottom: 12px; }
         .skeleton-text { width: 80%; height: 1em; background-color: var(--skeleton-bg); border-radius: 3px; margin-bottom: 8px; }
         .skeleton-text.short { width: 50%; height: 0.8em; }
-        .file-item-list.skeleton { height: 45px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 5px; }
-        .file-browser-list .skeleton-icon { width: 36px; height: 36px; margin-bottom: 0; flex-shrink: 0; }
-        .file-browser-list .skeleton-text { height: 0.9em; margin-bottom: 0; flex-grow: 1; }
-        .file-browser-list .skeleton-text.short { width: 50px; flex-grow: 0; flex-shrink: 0; margin-left: auto; }
+        /* List Skeleton */
+        .file-item-list.skeleton { height: 45px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 5px; background-color: var(--skeleton-bg); }
+        .file-browser-list .skeleton-icon { width: 20px; height: 20px; margin-bottom: 0; flex-shrink: 0; background-color: var(--skeleton-highlight); border-radius: 3px; }
+        .file-browser-list .skeleton-text { height: 0.9em; margin-bottom: 0; flex-grow: 1; background-color: var(--skeleton-highlight); border-radius: 3px; }
+        .file-browser-list .skeleton-text.short { width: 50px; flex-grow: 0; flex-shrink: 0; margin-left: auto; background-color: var(--skeleton-highlight); border-radius: 3px; }
 
         /* --- File Browser Container --- */
         #file-browser-container { margin-top: 10px; }
@@ -157,88 +160,75 @@
         .track-download-btn .progress-background { stroke: var(--download-progress-bg); }
         .track-download-btn .progress-bar-circle { stroke: var(--download-progress-fill); stroke-linecap: round; transition: stroke-dashoffset 0.1s linear; }
         .track-download-btn .download-progress-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.55rem; font-weight: bold; color: var(--text-primary); display: none; line-height: 1; }
+        /* CORRECTED: Ensure loader stays inside container */
         .track-download-btn .btn-loader { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 16px; height: 16px; border-width: 2px; border-color: rgba(255, 255, 255, 0.3); border-top-color: var(--text-primary); animation: spin 0.8s linear infinite; }
         .track-download-btn.loading .btn-icon { opacity: 0.1; }
         .track-download-btn.loading .circular-progress,
         .track-download-btn.loading .download-progress-text { display: block; }
-        .track-download-btn.loading .btn-loader { display: none; }
+        .track-download-btn.loading .btn-loader { display: none; } /* Replaced by circular progress */
         
         /* --- Item-specific Jump to Folder Button (Search only) --- */
-        .item-jump-to-folder-btn {
-            background: none;
-            border: none;
-            color: var(--icon-color-default);
-            cursor: pointer;
-            line-height: 1;
-            flex-shrink: 0;
-            position: relative;
-            transition: background-color 0.2s, color 0.2s;
-        }
-        .file-item-list .item-jump-to-folder-btn {
-            font-size: 1.1rem;
-            padding: 0;
-            border-radius: 50%;
-            width: 28px;
-            height: 28px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin-left: 5px;
-        }
-        .file-item-list .item-jump-to-folder-btn:hover {
-            background-color: var(--button-bg-hover);
-            color: var(--text-primary);
-        }
-        .file-item-grid .item-jump-to-folder-btn {
-            position: absolute;
-            bottom: 8px;
-            left: 8px;
-            background-color: rgba(0,0,0,0.3);
-            backdrop-filter: blur(2px);
-            font-size: 0.9rem;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-        }
-        .file-item-grid .item-jump-to-folder-btn:hover {
-            background-color: rgba(255,255,255,0.2);
-            color: var(--text-primary);
-        }
+        .item-jump-to-folder-btn { background: none; border: none; color: var(--icon-color-default); cursor: pointer; line-height: 1; flex-shrink: 0; position: relative; transition: background-color 0.2s, color 0.2s; }
+        .file-item-list .item-jump-to-folder-btn { font-size: 1.1rem; padding: 0; border-radius: 50%; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; margin-left: 5px; }
+        .file-item-list .item-jump-to-folder-btn:hover { background-color: var(--button-bg-hover); color: var(--text-primary); }
+        .grid-item-info .item-jump-to-folder-btn { background-color: rgba(255,255,255,0.1); width: 24px; height: 24px; border-radius: 50%; font-size: 0.8rem; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+        .grid-item-info .item-jump-to-folder-btn:hover { background-color: rgba(255,255,255,0.2); color: var(--text-primary); }
 
-        /* --- Grid View --- */
-        .file-browser-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
-        .file-item-grid { background-color: var(--bg-secondary); border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s ease-in-out; border: 1px solid var(--border-color); overflow: hidden; display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; justify-content: flex-start; }
-        .file-item-grid:hover { background-color: var(--list-item-hover); transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); }
-        .file-icon-grid { margin-bottom: 12px; color: var(--icon-color-accent); line-height: 1; width: 100%; height: 0; padding-bottom: 100%; position: relative; background-color: var(--bg-tertiary); border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-        .file-icon-grid > i { font-size: 2.5rem; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
-        .file-icon-grid.folder { color: var(--icon-color-container); background-color: transparent; }
-        .grid-view-cover-art { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; background-color: var(--bg-tertiary); }
-        .file-name-grid { font-size: 0.9rem; font-weight: 500; white-space: normal; overflow-wrap: break-word; word-break: break-all; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; margin-bottom: 5px; max-height: calc(1.3em * 3); }
-        .file-info-grid { font-size: 0.75rem; color: var(--text-secondary); margin-top: auto; min-height: 1em; }
-        .file-item-grid .track-download-btn { position: absolute; bottom: 8px; right: 8px; background-color: rgba(0,0,0,0.3); backdrop-filter: blur(2px); font-size: 0.9rem; width: 24px; height: 24px; }
-        .file-item-grid.playing-track { border-color: var(--accent-color); box-shadow: 0 0 0 2px var(--accent-color), 0 4px 12px rgba(0, 0, 0, 0.4); transform: translateY(-3px); }
-        .file-item-grid.playing-track .file-name-grid { color: var(--accent-color); font-weight: 600; }
+        /*
+        ========================================
+        --- NEW: Redesigned Grid View ---
+        ========================================
+        */
+        .file-browser-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 24px; }
+        .file-item-grid { background-color: transparent; border-radius: 8px; transition: all 0.2s ease-in-out; position: relative; cursor: pointer; padding: 10px; }
+        .file-item-grid:hover { background-color: var(--list-item-hover); }
+        .file-item-grid.non-interactive { cursor: default; }
+        .file-item-grid.non-interactive:hover { background-color: transparent; }
+        
+        .grid-item-artwork { position: relative; width: 100%; padding-top: 100%; border-radius: 8px; background-color: var(--grid-artwork-bg); overflow: hidden; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+        .grid-item-artwork .cover-art-image { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
+        .file-item-grid:hover .cover-art-image { transform: scale(1.05); }
+        .grid-item-artwork .icon-fallback { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: var(--icon-color-default); }
+        .grid-item-artwork .icon-fallback.folder { color: var(--icon-color-container); }
+        .grid-item-artwork .icon-fallback.music { color: var(--icon-color-accent); }
+        .grid-item-artwork .icon-fallback.image { color: var(--text-secondary); }
 
-         /* --- List View --- */
+        /* Play overlay for tracks */
+        .grid-item-artwork .play-overlay { position: absolute; bottom: 8px; right: 8px; width: 44px; height: 44px; background-color: var(--accent-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem; box-shadow: 0 4px 10px rgba(0,0,0,0.5); opacity: 0; transform: translateY(10px) scale(0.9); transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; }
+        .file-item-grid.is-audio:hover .play-overlay { opacity: 1; transform: translateY(0) scale(1); }
+        .play-overlay:hover { background-color: var(--accent-hover); transform: scale(1.1) !important; }
+        
+        .grid-item-info { padding: 0 4px; text-align: left; }
+        .file-name-grid { font-size: 0.9rem; font-weight: 600; white-space: normal; overflow-wrap: break-word; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; margin-bottom: 4px; }
+        .file-info-grid { font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+        .file-item-grid.playing-track { background-color: var(--list-item-hover); }
+        .file-item-grid.playing-track .file-name-grid { color: var(--accent-color); }
+        .file-item-grid.playing-track .play-overlay { opacity: 1; transform: translateY(0) scale(1); background-color: var(--accent-hover); }
+        .file-item-grid.playing-track .play-overlay i::before { content: "\f04c"; /* Pause icon */ }
+
+        /*
+        ========================================
+        --- IMPROVED List View ---
+        ========================================
+        */
          .file-browser-list { display: flex; flex-direction: column; gap: 2px; }
-         .file-item-list { display: flex; align-items: center; padding: 10px 12px; background-color: var(--bg-secondary); border-radius: 5px; cursor: default; transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, border-left-color 0.2s ease-in-out; border: 1px solid transparent; border-left: 3px solid transparent; gap: 12px; }
-         .file-item-list:hover { background-color: var(--list-item-hover); border-color: var(--border-color); }
+         .file-item-list { display: flex; align-items: center; padding: 10px 12px; background-color: transparent; border-radius: 5px; cursor: default; transition: background-color 0.2s ease-in-out, border-left-color 0.2s ease-in-out; border-left: 3px solid transparent; gap: 12px; }
+         .file-item-list:hover { background-color: var(--list-item-hover); }
          .file-item-list.non-interactive { cursor: default; opacity: 0.6; }
-         .file-item-list.non-interactive:hover { background-color: var(--bg-secondary); border-color: transparent; }
-         .file-icon-list { font-size: 1.2rem; color: var(--icon-color-accent); line-height: 1; width: 36px; height: 36px; text-align: center; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background-color: var(--bg-tertiary); border-radius: 4px; overflow: hidden; }
-         .file-icon-list.folder { color: var(--icon-color-container); background-color: transparent; }
-         .list-view-cover-art { width: 100%; height: 100%; object-fit: cover; }
+         .file-item-list.non-interactive:hover { background-color: transparent; }
+         .file-icon-list { font-size: 1.2rem; color: var(--icon-color-accent); line-height: 1; width: 20px; text-align: center; flex-shrink: 0; }
+         .file-icon-list.folder { color: var(--icon-color-container); }
+         .file-icon-list.image { color: var(--text-secondary); }
          .file-name-list { font-size: 0.95rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; line-height: 1.3; cursor: pointer; transition: color 0.2s ease; }
+         .file-item-list.is-folder .file-name-list, .file-item-list.is-image .file-name-list { cursor: pointer; }
          .file-item-list.non-interactive .file-name-list { cursor: default; }
          .file-info-list { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 100px; text-align: right; flex-shrink: 0; }
          .file-duration-list { font-size: 0.8rem; color: var(--text-secondary); width: 45px; text-align: right; flex-shrink: 0; }
          .file-size-list { font-size: 0.8rem; color: var(--text-secondary); min-width: 55px; text-align: right; flex-shrink: 0; }
          .file-item-count { font-size: 0.8rem; color: var(--text-secondary); margin-left: auto; flex-shrink: 0; padding-left: 15px; }
          .file-item-list .track-download-btn { margin-left: 5px; }
+         /* IMPROVED playing track style */
          .file-item-list.playing-track { background-color: var(--highlight-color); border-left-color: var(--accent-color); }
          .file-item-list.playing-track .file-name-list { color: var(--accent-color); font-weight: 600;}
 
@@ -248,9 +238,8 @@
         .player-content-wrapper { display: flex; align-items: center; width: 100%; height: 100%; gap: 10px; transition: opacity 0.3s ease, flex-direction 0.3s ease; padding: 0 20px; box-sizing: border-box; }
         
         .player-column-left { display: flex; align-items: center; justify-content: space-between; flex-grow: 1; min-width: 0; gap: 10px; transition: all 0.4s ease; }
-        .player-column-right { display: none; /* Hidden by default */ }
+        .player-column-right { display: none; }
         
-        /* Player Info (Left) */
         .player-info { display: flex; align-items: center; gap: 10px; flex-basis: 30%; flex-shrink: 1; min-width: 180px; overflow: hidden; order: 1; transition: all 0.4s ease; }
         .player-album-art { position: relative; width: 55px; height: 55px; background-color: var(--bg-tertiary); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; flex-shrink: 0; color: var(--icon-color-accent); overflow: hidden; transition: all 0.4s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
         .player-album-art img { display: block; width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; opacity: 0; transition: opacity 0.3s ease; z-index: 2; }
@@ -268,7 +257,6 @@
         .player-subtitle-small { font-size: 0.7rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0.8; margin-top: 2px; display: none; transition: all 0.4s ease; }
         .player-info .jump-to-folder-btn { margin-left: 8px; font-size: 1rem; width: 32px; height: 32px; flex-shrink: 0; }
 
-        /* Player Controls (Center) */
         .player-controls { display: flex; flex-direction: column; align-items: center; gap: 8px; flex-grow: 1; flex-basis: 40%; max-width: 500px; order: 2; transition: all 0.4s ease; }
         .player-buttons { display: flex; align-items: center; gap: 15px; }
         .player-button { background: none; border: none; color: var(--text-primary); font-size: 1.2rem; cursor: pointer; padding: 5px; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; line-height: 1; position: relative; }
@@ -292,7 +280,6 @@
         .progress-bar-wrapper:hover .progress-bar { background-color: var(--accent-hover); }
         .progress-bar-wrapper:hover .progress-bar-container { transform: scaleY(1.5); }
 
-        /* Player Extras (Right) */
         .player-extras { display: flex; align-items: center; gap: 10px; flex-basis: 30%; flex-shrink: 1; justify-content: flex-end; min-width: 180px; order: 3; transition: all 0.4s ease; }
         #lyrics-btn { font-size: 1.1rem; }
         .pitch-control { display: flex; align-items: center; gap: 5px; }
@@ -309,9 +296,7 @@
 
         /* --- Minimized Player States --- */
         #player-section.minimized .player-content-wrapper,
-        #player-section.super-minimized .player-content-wrapper {
-            display: none; opacity: 0; pointer-events: none;
-        }
+        #player-section.super-minimized .player-content-wrapper { display: none; opacity: 0; pointer-events: none; }
         #player-section.minimized { height: 35px; overflow: hidden; }
         #player-section.super-minimized { height: 28px; overflow: hidden; }
         #player-section.minimized .mini-progress,
@@ -333,146 +318,57 @@
         .mini-progress { position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background-color: var(--progress-bar); display: none; z-index: 102; pointer-events: none; }
         .mini-progress::after { content: ''; position: absolute; left: 0; top: 0; height: 100%; background-color: var(--progress-filled); width: var(--progress-width, 0%); transition: width 0.1s linear; }
 
-        /*
-        ========================================
-        --- Full Screen Lyrics View (REVISED) ---
-        ========================================
-        */
+        /* --- Full Screen Lyrics View --- */
         .lyrics-header { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px; color: var(--text-primary); flex-shrink: 0; }
         .lyrics-header h3 { margin: 0; font-size: 1.5rem; font-weight: 700; }
         #lyrics-view-close-btn { background: none; border: none; font-size: 2rem; color: var(--text-secondary); cursor: pointer; line-height: 1; transition: color 0.2s; padding: 0 10px; }
         #lyrics-view-close-btn:hover { color: var(--text-primary); }
         
         #lyrics-container { 
-            height: 100%;
-            width: 100%;
-            overflow-y: auto; 
-            text-align: left; 
-            scrollbar-width: thin; 
-            scrollbar-color: var(--bg-tertiary) transparent; 
-            scroll-padding: 45% 0; 
-            box-sizing: border-box;
+            height: 100%; width: 100%; overflow-y: auto; text-align: left; 
+            scrollbar-width: thin; scrollbar-color: var(--bg-tertiary) transparent; 
+            scroll-padding: 45% 0; box-sizing: border-box;
         }
         #lyrics-container::-webkit-scrollbar { width: 8px; }
         #lyrics-container::-webkit-scrollbar-track { background: transparent; }
         #lyrics-container::-webkit-scrollbar-thumb { background-color: var(--bg-tertiary); border-radius: 4px; }
         
-        #lyrics-container::before,
-        #lyrics-container::after { 
-            content: ''; 
-            display: block; 
-            height: 45%; 
-        }
+        #lyrics-container::before, #lyrics-container::after { content: ''; display: block; height: 45%; }
+        
         .lyrics-line, .lyrics-plain { 
-            font-size: 2.2rem;  /* Increased size */
-            font-weight: 700; /* Increased weight */
-            line-height: 1.4; 
-            margin: 0 0 0.8em 0; 
-            color: var(--lyrics-text-color); 
+            font-size: 2.2rem; font-weight: 700; line-height: 1.4; 
+            margin: 0 0 0.8em 0; color: var(--lyrics-text-color); 
             transition: color 0.3s ease, transform 0.3s ease, opacity 0.3s ease; 
             opacity: 0.5; 
         }
         .lyrics-line[data-time] { cursor: pointer; } 
         .lyrics-line.active { 
-            color: var(--lyrics-active-color); 
+            color: var(--lyrics-active-color);
             transform: scale(1.02); 
-            transform-origin: left center; /* FIX: Prevents clipping on the left */
+            transform-origin: left center;
             opacity: 1; 
         }
         #lyrics-container.plain-text .lyrics-plain { font-size: 1.2rem; line-height: 1.7; font-weight: 500; opacity: 0.9; white-space: pre-wrap; }
-        #lyrics-container.plain-text::before,
-        #lyrics-container.plain-text::after { display: none; }
+        #lyrics-container.plain-text::before, #lyrics-container.plain-text::after { display: none; }
         .lyrics-status { color: var(--text-secondary); font-style: italic; font-size: 1.2rem; }
 
-        /* Activate Lyrics View */
-        body.lyrics-view-active #player-section { 
-            top: 0; 
-            height: 100%; 
-            bottom: auto; 
-            padding: 0; 
-            background-color: var(--bg-tertiary); 
-        }
+        body.lyrics-view-active #player-section { top: 0; height: 100%; bottom: auto; padding: 0; background-color: var(--bg-tertiary); }
         body.lyrics-view-active .player-toggle-button, body.lyrics-view-active .mini-progress, body.lyrics-view-active .mini-title { display: none !important; }
-        body.lyrics-view-active .player-content-wrapper { 
-            flex-direction: row; 
-            height: 100%; 
-            padding: 0; 
-            align-items: stretch;
-        }
-        
-        /* Left Column (Player Controls) in Lyrics View */
-        body.lyrics-view-active .player-column-left { 
-            flex: 0 0 35%; /* UPDATE: Gave more space to lyrics */
-            max-width: 450px; /* UPDATE: Capped width for better proportions */
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            gap: 25px; 
-            padding: 40px; 
-            box-sizing: border-box;
-        }
-        /* Right Column (Lyrics) in Lyrics View */
-        body.lyrics-view-active .player-column-right { 
-            flex: 1 1 65%; /* UPDATE: Took more space */
-            display: flex;
-            flex-direction: column;
-            box-sizing: border-box;
-            background-color: var(--bg-primary);
-            padding: 40px 60px; /* Padding creates safe space for lyrics */
-        }
-        
-        /* Elements inside Left Column */
-        body.lyrics-view-active .player-info { 
-            flex-direction: column; 
-            text-align: center; 
-            flex-basis: auto; 
-            width: 100%; 
-            max-width: 400px; 
-            gap: 15px; /* UPDATE: Adjusted gap */
-            flex-shrink: 0; /* FIX: Prevents container from shrinking */
-        }
-        body.lyrics-view-active .player-album-art { 
-            width: 100%; 
-            height: auto; 
-            padding-top: 100%;
-            max-width: 400px; 
-            border-radius: 12px; 
-        }
-        body.lyrics-view-active .player-text { 
-            text-align: center; 
-            overflow: visible; /* FIX: Prevents subtitle from being clipped */
-        }
-        body.lyrics-view-active .player-title { 
-            font-size: 1.6rem; 
-            white-space: normal;
-            line-height: 1.2;
-        }
-        body.lyrics-view-active .player-subtitle { 
-            font-size: 1.1rem; 
-            white-space: normal; 
-            margin-top: 4px; /* UPDATE: Added margin for spacing */
-            line-height: 1.3; /* UPDATE: Improved line height for wrapping */
-        }
+        body.lyrics-view-active .player-content-wrapper { flex-direction: row; height: 100%; padding: 0; align-items: stretch; }
+        body.lyrics-view-active .player-column-left { flex: 0 0 35%; max-width: 450px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 25px; padding: 40px; box-sizing: border-box; }
+        body.lyrics-view-active .player-column-right { flex: 1 1 65%; display: flex; flex-direction: column; box-sizing: border-box; background-color: var(--bg-primary); padding: 40px 60px; }
+        body.lyrics-view-active .player-info { flex-direction: column; text-align: center; flex-basis: auto; width: 100%; max-width: 400px; gap: 15px; flex-shrink: 0; }
+        body.lyrics-view-active .player-album-art { width: 100%; height: auto; padding-top: 100%; max-width: 400px; border-radius: 12px; }
+        body.lyrics-view-active .player-text { text-align: center; overflow: visible; }
+        body.lyrics-view-active .player-title { font-size: 1.6rem; white-space: normal; line-height: 1.2; }
+        body.lyrics-view-active .player-subtitle { font-size: 1.1rem; white-space: normal; margin-top: 4px; line-height: 1.3; }
         body.lyrics-view-active .jump-to-folder-btn,
-        body.lyrics-view-active #lyrics-btn { 
-            display: none; 
-        }
+        body.lyrics-view-active #lyrics-btn { display: none; }
         body.lyrics-view-active .player-controls,
-        body.lyrics-view-active .player-extras { 
-            flex-basis: auto; 
-            width: 100%; 
-            max-width: 400px; 
-        }
-        body.lyrics-view-active .player-extras {
-             justify-content: space-evenly;
-        }
+        body.lyrics-view-active .player-extras { flex-basis: auto; width: 100%; max-width: 400px; }
+        body.lyrics-view-active .player-extras { justify-content: space-evenly; }
         body.lyrics-view-active .pitch-control, 
-        body.lyrics-view-active .volume-control { 
-            flex-grow: 1; 
-            justify-content: center; 
-        }
-
+        body.lyrics-view-active .volume-control { flex-grow: 1; justify-content: center; }
 
         /* --- Status Messages & Loader --- */
         .status-message { margin-bottom: 20px; text-align: center; padding: 20px; color: var(--text-secondary); font-size: 1rem; border-radius: 8px; background-color: var(--bg-secondary); border: 1px dashed var(--border-color); display: none; }
@@ -493,6 +389,43 @@
         .exit-search-btn:hover { background-color: var(--bg-secondary); color: var(--text-primary); }
         .exit-search-btn i { font-size: 0.9em; }
 
+        /* --- NEW: Image Viewer Modal --- */
+        #image-viewer-modal {
+            display: none; position: fixed; z-index: 1000;
+            left: 0; top: 0; width: 100%; height: 100%;
+            overflow: auto; background-color: rgba(0,0,0,0.85);
+            backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        #image-viewer-modal .modal-content {
+            margin: auto; display: block;
+            max-width: 90%; max-height: 80vh;
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        #image-viewer-modal .close-btn {
+            position: absolute; top: 15px; right: 35px;
+            color: #f1f1f1; font-size: 40px; font-weight: bold;
+            transition: 0.3s; cursor: pointer;
+        }
+        #image-viewer-modal .close-btn:hover,
+        #image-viewer-modal .close-btn:focus { color: var(--text-secondary); text-decoration: none; }
+        #image-viewer-modal #image-viewer-caption {
+            position: absolute; bottom: 30px; left: 50%;
+            transform: translateX(-50%);
+            text-align: center; color: var(--text-secondary);
+            font-size: 0.9rem; padding: 10px;
+            background: rgba(0,0,0,0.5); border-radius: 4px;
+        }
+        #image-viewer-modal #image-viewer-download {
+            position: absolute; top: 20px; left: 20px;
+            background-color: var(--bg-tertiary); color: var(--text-primary);
+            padding: 8px 12px; text-decoration: none; border-radius: 5px;
+            font-size: 0.9rem; transition: 0.3s;
+        }
+        #image-viewer-modal #image-viewer-download:hover { background-color: var(--bg-secondary); }
 
         /* --- Responsive Body Padding --- */
         body.player-standard { padding-bottom: 90px; }
@@ -500,9 +433,8 @@
         body.player-super-minimized { padding-bottom: 28px; }
         body.lyrics-view-active { padding-bottom: 0 !important; }
 
-
         @media (max-width: 1024px) {
-            /* On tablets, give lyrics more space */
+            .file-browser-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
              body.lyrics-view-active .player-column-left { flex-basis: 35%; max-width: 400px; }
              body.lyrics-view-active .player-column-right { flex-basis: 65%; padding: 30px 40px; }
              .lyrics-line, .lyrics-plain { font-size: 1.8rem; }
@@ -537,7 +469,6 @@
             .revert-speed-btn { width: 30px; height: 30px; font-size: 0.9rem; }
             #player-section.super-minimized .mini-title { max-width: calc(100% - 70px); }
             
-            /* On smaller screens, lyrics view becomes single-column (player controls disappear) */
             body.lyrics-view-active .player-column-left { display: none; }
             body.lyrics-view-active .player-column-right { flex: 1 1 100%; padding: 20px; }
             body.lyrics-view-active .player-info { flex-direction: column; text-align: center; }
@@ -546,6 +477,7 @@
         }
 
          @media (max-width: 480px) {
+             .file-browser-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; }
              body.player-standard { padding-bottom: calc(185px + 25px); }
              #player-section { height: 185px; }
              .player-content-wrapper { padding: 8px 12px; gap: 6px; }
@@ -606,13 +538,14 @@
                         <i class="fas fa-calendar-alt"></i> Year
                     </button>
                 </div>
-                <div class="view-toggle-buttons" id="grid-list-toggle-container">
+                <!-- NEW: Grid/List toggle container is now controlled by JS -->
+                <div class="view-toggle-buttons" id="grid-list-toggle-container" style="display: none;">
                     <button id="grid-view-btn" class="view-toggle-btn" title="Grid View"><i class="fas fa-th-large"></i></button>
                     <button id="list-view-btn" class="view-toggle-btn active" title="List View"><i class="fas fa-list"></i></button>
                 </div>
             </div>
             <!-- Multi-Download Button -->
-            <button id="download-all-btn" title="Download all tracks in this view as a ZIP" disabled>
+            <button id="download-all-btn" title="Download all items in this view as a ZIP" disabled>
                 <span class="icon"><i class="fas fa-file-archive"></i></span>
                 <span id="download-all-progress-container">
                     <span class="loader"></span>
@@ -626,9 +559,7 @@
 
         <!-- Skeleton Loader -->
         <div id="skeleton-loader" class="file-browser-grid" style="display: none;">
-            <div class="file-item-grid skeleton"><div class="skeleton-icon"></div><div class="skeleton-text"></div><div class="skeleton-text short"></div></div>
-            <div class="file-item-grid skeleton"><div class="skeleton-icon"></div><div class="skeleton-text"></div><div class="skeleton-text short"></div></div>
-            <div class="file-item-grid skeleton"><div class="skeleton-icon"></div><div class="skeleton-text"></div><div class="skeleton-text short"></div></div>
+            <!-- Content generated by JS -->
         </div>
 
         <!-- File Browser -->
@@ -713,6 +644,16 @@
             </div>
         </div>
     </div>
+    
+    <!-- NEW: Image Viewer Modal -->
+    <div id="image-viewer-modal">
+      <span class="close-btn" id="image-viewer-close">&times;</span>
+      <img class="modal-content" id="image-viewer-img">
+      <div id="image-viewer-caption"></div>
+      <a id="image-viewer-download" href="#" target="_blank" download>
+        <i class="fas fa-download"></i> Download
+      </a>
+    </div>
 
     <audio id="audio-element-for-context" style="display: none;"></audio>
     <div id="search-hint-popup">
@@ -772,21 +713,23 @@
         const closeHintBtn = document.getElementById('close-hint-btn');
         const gridViewBtn = document.getElementById('grid-view-btn');
         const listViewBtn = document.getElementById('list-view-btn');
+        const gridListToggleContainer = document.getElementById('grid-list-toggle-container');
         const folderViewBtn = document.getElementById('folder-view-btn');
         const itemCountDisplayEl = document.getElementById('item-count-display');
-        // Lyrics View Elements
         const lyricsBtn = document.getElementById('lyrics-btn');
-        const lyricsDisplayArea = document.getElementById('lyrics-display-area');
         const lyricsContainer = document.getElementById('lyrics-container');
         const lyricsViewCloseBtn = document.getElementById('lyrics-view-close-btn');
-        // Multi-Download elements
         const downloadAllBtn = document.getElementById('download-all-btn');
         const downloadAllProgressTextEl = document.getElementById('download-all-progress-text');
         const downloadAllCancelBtn = document.getElementById('download-all-cancel-btn');
-        // Sort elements
         const sortAlphaBtn = document.getElementById('sort-alpha-btn');
         const sortYearBtn = document.getElementById('sort-year-btn');
         const sortButtonsContainer = document.getElementById('sort-buttons-container');
+        const imageViewerModal = document.getElementById('image-viewer-modal');
+        const imageViewerImg = document.getElementById('image-viewer-img');
+        const imageViewerCaption = document.getElementById('image-viewer-caption');
+        const imageViewerClose = document.getElementById('image-viewer-close');
+        const imageViewerDownload = document.getElementById('image-viewer-download');
 
         // --- Audio State ---
         let audioContext;
@@ -804,16 +747,15 @@
         const activeDownloads = new Map();
         let multiDownloadAbortController = null;
 
-
         // --- Data State ---
         let currentDirectory = '';
         let allArchiveFiles = [];
-        let folderCovers = new Map();
+        let coverMap = new Map();
         let currentDirectoryItems = [];
         let currentTracklist = [];
         let currentTrackIndex = -1;
         let currentPlayingFile = null;
-        let currentLayoutMode = 'list';
+        let currentLayoutMode = 'list'; // Default layout mode
         let currentSortMode = 'alphabetical';
         let currentMainView = 'folder';
         let playerState = 'super-minimized';
@@ -829,8 +771,9 @@
 
         // --- Constants ---
         const VIEW_MODE_FOLDER = 'folder';
-        const SEARCH_CHUNK_SIZE = 100; // Process 100 files at a time to avoid freezing
+        const SEARCH_CHUNK_SIZE = 100;
         const SEARCH_DEBOUNCE_MS = 250;
+        const SUBFOLDER_DEFAULT_VIEW = 'grid'; // Default for non-music subfolders
 
         // --- Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -844,28 +787,24 @@
             setupAudioContext();
             loadArchiveStructure();
             setupEventListeners();
-            applyLayoutMode();
             applySortModeUI();
             applyMainViewMode();
             applyPlayerState();
             showSearchHintIfNeeded();
-            populateSkeletonLoaders();
         });
 
         function buildUrlQuery(path) {
-            if (path) {
-                return `?path=${encodeURIComponent(path)}`;
-            }
-            return window.location.pathname;
+            return path ? `?path=${encodeURIComponent(path)}` : window.location.pathname;
         }
 
         function populateSkeletonLoaders() {
-            const gridSkeletonHTML = `<div class="file-item-grid skeleton"><div class="skeleton-icon"></div><div class="skeleton-text"></div><div class="skeleton-text short"></div></div>`;
+            const layout = currentLayoutMode;
+            const gridSkeletonHTML = `<div class="file-item-grid skeleton"><div class="skeleton-artwork"></div><div class="skeleton-text"></div><div class="skeleton-text short"></div></div>`;
             const listSkeletonHTML = `<div class="file-item-list skeleton"><div class="skeleton-icon"></div><div class="skeleton-text"></div><div class="skeleton-text short"></div></div>`;
             let skeletonsHTML = '';
-            const numSkeletons = 6;
+            const numSkeletons = 12;
 
-            if (currentLayoutMode === 'grid') {
+            if (layout === 'grid') {
                 for (let i = 0; i < numSkeletons; i++) skeletonsHTML += gridSkeletonHTML;
                 skeletonLoaderEl.innerHTML = skeletonsHTML;
                 skeletonLoaderEl.className = 'file-browser-grid';
@@ -879,23 +818,9 @@
         function loadSettings() {
              currentVolume = parseFloat(localStorage.getItem('playerVolume') || '0.7');
              currentPlaybackRate = parseFloat(localStorage.getItem('playerRate') || '1.0');
-
-             const savedPlayerState = localStorage.getItem('playerState');
-             if (savedPlayerState) playerState = savedPlayerState;
-             else playerState = 'super-minimized';
-
-             const savedLayoutMode = localStorage.getItem('layoutMode');
-             if (savedLayoutMode) currentLayoutMode = savedLayoutMode;
-             else currentLayoutMode = 'list';
-            
-             const savedSortMode = localStorage.getItem('sortMode');
-             if (savedSortMode) currentSortMode = savedSortMode;
-             else currentSortMode = 'alphabetical';
-
-             const savedMainView = localStorage.getItem('mainView');
-             if (savedMainView) currentMainView = savedMainView;
-             else currentMainView = 'folder';
-
+             playerState = localStorage.getItem('playerState') || 'super-minimized';
+             currentSortMode = localStorage.getItem('sortMode') || 'alphabetical';
+             currentMainView = localStorage.getItem('mainView') || 'folder';
              volumeSlider.value = currentVolume;
              pitchSlider.value = currentPlaybackRate;
              updateVolumeIcon(currentVolume);
@@ -914,7 +839,6 @@
                         gainNode = audioContext.createGain();
                         gainNode.gain.value = currentVolume;
                         gainNode.connect(audioContext.destination);
-                        console.log("AudioContext initialized.");
                         document.removeEventListener('pointerdown', initAudio);
                         document.removeEventListener('keydown', initAudio);
                     } catch (e) {
@@ -934,7 +858,10 @@
                 if (!response.ok) throw new Error(`Metadata fetch failed (Status: ${response.status})`);
                 const data = await response.json();
                 if (!data.files || !Array.isArray(data.files)) throw new Error('Invalid archive structure: No files array found.');
-                allArchiveFiles = processRawFiles(data.files);
+                
+                let processedFiles = processRawFiles(data.files);
+                [allArchiveFiles, coverMap] = mapCoverArtAndGetMap(processedFiles);
+                
                 updateDirectoryView(currentDirectory);
                 updateMainViewToggleButtons();
                 hideInitialLoading();
@@ -949,82 +876,71 @@
             let userMessage = "An error occurred.";
             const originalFullError = `Original error context: ${contextInfo} | Message: ${message}`;
             console.error(originalFullError);
-
             if (typeof message !== 'string') message = "Internal error detail unavailable.";
-
             const lowerMessage = message.toLowerCase();
-
-            if (lowerMessage.includes("http error") || lowerMessage.includes("status:") || lowerMessage.includes("failed to fetch") || lowerMessage.includes("networkerror")) {
+            if (lowerMessage.includes("http") || lowerMessage.includes("status:") || lowerMessage.includes("failed to fetch") || lowerMessage.includes("networkerror")) {
                 userMessage = "Network problem: Could not load required data.";
             } else if (lowerMessage.includes("decodeaudio") || lowerMessage.includes("decode")) {
                 userMessage = "Audio format error: Could not decode the audio file.";
-            } else if (lowerMessage.includes("aborted") || lowerMessage.includes("abort")) {
-                if (lowerMessage.includes("timeout")) {
-                     userMessage = "Operation timed out. Please check your connection and try again.";
-                } else {
-                    userMessage = "Operation was cancelled or interrupted.";
-                }
-            } else if (lowerMessage.includes("timeout")) {
-                userMessage = "Operation timed out. Please check your connection and try again.";
+            } else if (lowerMessage.includes("aborted") || lowerMessage.includes("abort") || lowerMessage.includes("timeout")) {
+                userMessage = "Operation timed out or was cancelled. Please check your connection and try again.";
             } else {
                 userMessage = "An unexpected issue occurred. Please try again later.";
             }
             return userMessage;
         }
+        
+        function mapCoverArtAndGetMap(files) {
+            const newCoverMap = new Map();
+            const coverRegex = /\/(cover|folder)\.(jpe?g|png|webp)$/i;
 
-        function processRawFiles(rawFiles) {
-            const coverImageRegex = /cover\.(jpe?g|png|gif|webp)$/i;
-
-            // First pass to find all cover images and map them by folder
-            folderCovers.clear();
-            rawFiles.forEach(file => {
-                const pathParts = file.name.split('/');
-                const fileName = pathParts.pop();
-                if (coverImageRegex.test(fileName)) {
-                    const folderPath = pathParts.join('/') + (pathParts.length > 0 ? '/' : '');
-                    if (!folderCovers.has(folderPath)) {
-                        folderCovers.set(folderPath, `${archiveDownloadUrlBase}/${encodeURIComponent(file.name)}`);
+            for (const file of files) {
+                if (file.isImage && coverRegex.test(file.path)) {
+                    const dirPath = file.path.substring(0, file.path.lastIndexOf('/') + 1);
+                    if (!newCoverMap.has(dirPath) || file.path.toLowerCase().includes('cover.')) {
+                       newCoverMap.set(dirPath, file.path);
                     }
                 }
-            });
+            }
 
-             const yearRegex = /\((\d{4})\)$/;
-             return rawFiles
-                .map(file => {
-                     const path = file.name;
-                     let displayName = path.split('/').filter(p => p).pop() || path;
-                     
-                     const yearMatch = displayName.match(yearRegex);
-                     const year = yearMatch ? parseInt(yearMatch[1], 10) : null;
-
-                     let isDirectory = path.endsWith('/');
-                     if (!isDirectory) {
-                          for (const otherPath of rawFiles) {
-                              if (otherPath.name !== path && otherPath.name.startsWith(path + '/')) { 
-                                  isDirectory = true; 
-                                  break; 
-                              }
-                          }
-                     }
-                     let durationSeconds = file.length && !isNaN(parseFloat(file.length)) ? parseFloat(file.length) : undefined;
-                     let apiArtist = file.creator || file.artist || null;
-                     let apiAlbum = file.album || null;
-                     let apiTitle = file.title || null;
-                     if (apiArtist && typeof apiArtist === 'string') apiArtist = apiArtist.split(';')[0].trim();
-                     if (apiAlbum && typeof apiAlbum === 'string') apiAlbum = apiAlbum.split(';')[0].trim();
-                     return {
-                         name: file.name, path: path, size: file.size ? parseInt(file.size) : 0, format: file.format || '',
-                         isDirectory: isDirectory, isAudio: !isDirectory && path.toLowerCase().endsWith('.mp3'),
-                         displayName: displayName, duration: durationSeconds, year: year,
-                         artist: apiArtist, album: apiAlbum, title: apiTitle, metadata: null
-                     };
-                })
-                .filter(file => {
-                    // Filter out the cover images themselves from the browsable list
-                    const fileName = file.path.split('/').pop();
-                    return (file.isDirectory || file.isAudio) && !coverImageRegex.test(fileName);
-                });
+            for (const file of files) {
+                if (file.isDirectory && newCoverMap.has(file.path)) {
+                    file.coverArt = newCoverMap.get(file.path);
+                }
+            }
+            return [files, newCoverMap];
         }
+
+        function processRawFiles(rawFiles) {
+             const yearRegex = /\((\d{4})\)$/;
+             return rawFiles.map(file => {
+                 const path = file.name;
+                 let displayName = path.split('/').filter(p => p).pop() || path;
+                 const yearMatch = displayName.match(yearRegex);
+                 const year = yearMatch ? parseInt(yearMatch[1], 10) : null;
+                 let isDirectory = path.endsWith('/');
+                 if (!isDirectory) {
+                      for (const otherFile of rawFiles) {
+                          if (otherFile.name !== path && otherFile.name.startsWith(path + '/')) { 
+                              isDirectory = true; break; 
+                          }
+                      }
+                 }
+                 const isImage = !isDirectory && path.toLowerCase().match(/\.(jpe?g|png|webp|gif)$/i);
+                 let durationSeconds = file.length && !isNaN(parseFloat(file.length)) ? parseFloat(file.length) : undefined;
+                 let apiArtist = (file.creator || file.artist || '').split(';')[0].trim() || null;
+                 let apiAlbum = (file.album || '').split('g;')[0].trim() || null;
+                 let apiTitle = file.title || null;
+                 
+                 return {
+                     name: file.name, path: path, size: file.size ? parseInt(file.size) : 0, format: file.format || '',
+                     isDirectory, isAudio: !isDirectory && path.toLowerCase().endsWith('.mp3'),
+                     isImage, displayName, duration: durationSeconds, year,
+                     artist: apiArtist, album: apiAlbum, title: apiTitle, metadata: null,
+                     coverArt: null
+                 };
+             }).filter(file => file.isDirectory || file.isAudio || file.isImage);
+         }
 
         function showInitialLoading() { populateSkeletonLoaders(); showSkeletonLoader(true); statusMessageEl.innerHTML = `<span class="loader"></span>Loading archive... Please wait.`; statusMessageEl.classList.add('visible'); fileBrowserContainerEl.innerHTML = ''; if (itemCountDisplayEl) itemCountDisplayEl.style.display = 'none'; }
         function hideInitialLoading() { hideSkeletonLoader(); if (statusMessageEl.textContent.includes("Loading archive")) { statusMessageEl.classList.remove('visible'); statusMessageEl.innerHTML = ''; } }
@@ -1038,70 +954,57 @@
         function applyMainViewMode() {
             updateMainViewToggleButtons();
             updateBreadcrumbs();
-            const showFolderControls = currentMainView === VIEW_MODE_FOLDER;
-            sortButtonsContainer.style.display = showFolderControls ? 'flex' : 'none';
-
+            sortButtonsContainer.style.display = (currentMainView === VIEW_MODE_FOLDER) ? 'flex' : 'none';
             if (itemCountDisplayEl) {
-                itemCountDisplayEl.style.display = showFolderControls ? 'inline' : 'none';
-                if (!showFolderControls) {
-                    itemCountDisplayEl.textContent = '';
-                } else {
-                    updateItemCountDisplay();
-                }
+                itemCountDisplayEl.style.display = (currentMainView === VIEW_MODE_FOLDER) ? 'inline' : 'none';
+                if (currentMainView !== VIEW_MODE_FOLDER) { itemCountDisplayEl.textContent = ''; } 
+                else { updateItemCountDisplay(); }
             }
         }
 
         function updateItemCountDisplay() {
-            if (!itemCountDisplayEl || !currentDirectoryItems) {
-                if(itemCountDisplayEl) itemCountDisplayEl.style.display = 'none';
-                return;
-            }
-
+            if (!itemCountDisplayEl || !currentDirectoryItems) { if(itemCountDisplayEl) itemCountDisplayEl.style.display = 'none'; return; }
             const items = currentDirectoryItems;
             const count = items.length;
             let text = "";
-
             const isSearchActive = searchBox.value.trim() !== '' && searchContainer.classList.contains('active');
-
             if (isSearchActive) {
-                const numFiles = items.filter(item => item.isAudio).length;
-                if (numFiles > 0) {
-                    text = `${numFiles} track${numFiles > 1 ? 's' : ''} found`;
-                } else {
-                    text = "No tracks found";
-                }
+                const numFiles = items.filter(item => !item.isDirectory).length;
+                text = (numFiles > 0) ? `${numFiles} result${numFiles > 1 ? 's' : ''} found` : "No results found";
             } else {
                 const numFolders = items.filter(item => item.isDirectory).length;
-                const numAudioFiles = items.filter(item => item.isAudio).length;
-
-                if (numFolders > 0 && numAudioFiles > 0) {
-                    text = `${numFolders} folder${numFolders > 1 ? 's' : ''}, ${numAudioFiles} track${numAudioFiles > 1 ? 's' : ''}`;
-                } else if (numFolders > 0) {
-                    text = `${numFolders} folder${numFolders > 1 ? 's' : ''}`;
-                } else if (numAudioFiles > 0) {
-                    text = `${numAudioFiles} track${numAudioFiles > 1 ? 's' : ''}`;
-                } else if (count === 0) {
-                    if (currentDirectory !== '' && currentDirectory !== undefined) {
-                         text = "Empty folder";
-                    } else {
-                         text = "Archive empty";
-                    }
-                } else if (count > 0) {
-                    text = `${count} item${count > 1 ? 's' : ''}`;
-                } else {
-                     text = "";
-                }
+                const numFiles = items.filter(item => !item.isDirectory).length;
+                if (numFolders > 0 && numFiles > 0) text = `${numFolders} folder${numFolders > 1 ? 's' : ''}, ${numFiles} file${numFiles > 1 ? 's' : ''}`;
+                else if (numFolders > 0) text = `${numFolders} folder${numFolders > 1 ? 's' : ''}`;
+                else if (numFiles > 0) text = `${numFiles} file${numFiles > 1 ? 's' : ''}`;
+                else if (count === 0) text = (currentDirectory) ? "Empty folder" : "Archive empty";
             }
-
             itemCountDisplayEl.textContent = text;
-            if (currentMainView === VIEW_MODE_FOLDER) {
-                 itemCountDisplayEl.style.display = text ? 'inline' : 'none';
-            }
+            if (currentMainView === VIEW_MODE_FOLDER) { itemCountDisplayEl.style.display = text ? 'inline' : 'none'; }
         }
 
         function updateMainViewToggleButtons() { folderViewBtn.classList.toggle('active', currentMainView === VIEW_MODE_FOLDER); }
-        function setLayoutMode(mode) { if (mode === currentLayoutMode) return; currentLayoutMode = mode; saveSetting('layoutMode', mode); applyLayoutMode(); rerenderCurrentView(); }
-        function applyLayoutMode() { gridViewBtn.classList.toggle('active', currentLayoutMode === 'grid'); listViewBtn.classList.toggle('active', currentLayoutMode === 'list'); populateSkeletonLoaders(); if (fileBrowserContainerEl.children.length > 0) fileBrowserContainerEl.className = `file-browser-${currentLayoutMode}`; }
+        
+        // --- NEW/REVISED: View and Sort Logic ---
+        function setLayoutMode(mode) { 
+            if (mode === currentLayoutMode) return; 
+            currentLayoutMode = mode; 
+            // Save an override for the current subfolder for this session
+            if (currentDirectory !== '') {
+                sessionStorage.setItem('viewOverride-' + currentDirectory, mode);
+            }
+            applyLayoutMode(); 
+            rerenderCurrentView(); 
+        }
+
+        function applyLayoutMode() { 
+            gridViewBtn.classList.toggle('active', currentLayoutMode === 'grid'); 
+            listViewBtn.classList.toggle('active', currentLayoutMode === 'list'); 
+            if (fileBrowserContainerEl.children.length > 0) {
+                 fileBrowserContainerEl.className = `file-browser-${currentLayoutMode}`;
+            }
+        }
+        
         function setSortMode(mode) { if (mode === currentSortMode) return; currentSortMode = mode; saveSetting('sortMode', mode); applySortModeUI(); rerenderCurrentView(); }
         function applySortModeUI() { sortAlphaBtn.classList.toggle('active', currentSortMode === 'alphabetical'); sortYearBtn.classList.toggle('active', currentSortMode === 'year'); }
         
@@ -1116,7 +1019,6 @@
                     items = sortItems(items);
                     currentDirectoryItems = items;
                     renderFileBrowser(items);
-                    hideSkeletonLoader();
                 } else {
                     displayStatus("Selected view not available for rerender.", false); 
                 }
@@ -1124,26 +1026,16 @@
         }
 
         function sortItems(items) {
-            const effectiveSortMode = (currentDirectory === '' || currentSortMode === 'alphabetical') ? 'alphabetical' : 'year';
-
             return items.sort((a, b) => {
-                if (a.isDirectory !== b.isDirectory) {
-                    return a.isDirectory ? -1 : 1;
+                const typeA = a.isDirectory ? 0 : (a.isAudio ? 1 : 2);
+                const typeB = b.isDirectory ? 0 : (b.isAudio ? 1 : 2);
+                if (typeA !== typeB) return typeA - typeB;
+                if (currentSortMode === 'year') {
+                    const yearA = a.year; const yearB = b.year;
+                    if (yearA && yearB && yearA !== yearB) return yearB - yearA;
+                    if (yearA && !yearB) return -1;
+                    if (!yearA && yearB) return 1;
                 }
-
-                if (effectiveSortMode === 'year') {
-                    const yearA = a.year;
-                    const yearB = b.year;
-
-                    if (yearA && yearB) {
-                        if (yearA !== yearB) return yearB - yearA; // Newest first
-                    } else if (yearA) {
-                        return -1; // a has a year, b doesn't. a comes first.
-                    } else if (yearB) {
-                        return 1; // b has a year, a doesn't. b comes first.
-                    }
-                }
-                
                 return (a.displayName || '').localeCompare(b.displayName || '', undefined, { numeric: true, sensitivity: 'base' });
             });
         }
@@ -1154,6 +1046,24 @@
 
             const oldPath = currentDirectory;
             currentDirectory = path;
+            
+            // --- NEW: Context-aware view logic ---
+            const isRoot = path === '';
+            let items = getItemsInDirectory(allArchiveFiles, currentDirectory);
+
+            if (isRoot) {
+                currentLayoutMode = 'list'; // Root is always list view
+            } else {
+                const sessionOverride = sessionStorage.getItem('viewOverride-' + path);
+                if (sessionOverride) {
+                    currentLayoutMode = sessionOverride; // Use user's choice for this folder
+                } else {
+                    const hasMp3s = items.some(item => item.isAudio);
+                    currentLayoutMode = hasMp3s ? 'list' : SUBFOLDER_DEFAULT_VIEW; // Default to list for music, grid for others
+                }
+            }
+            updateViewControls(); // Show/hide toggles based on root/sub
+            applyLayoutMode(); // Set active class on buttons
 
             if (!isNavigatingViaPopState && oldPath !== currentDirectory) {
                 history.pushState({ path: currentDirectory }, document.title, buildUrlQuery(currentDirectory));
@@ -1167,7 +1077,6 @@
             fileBrowserContainerEl.innerHTML = '';
             updateBreadcrumbs();
             
-            let items = getItemsInDirectory(allArchiveFiles, currentDirectory);
             items = sortItems(items);
             
             currentDirectoryItems = items;
@@ -1177,254 +1086,224 @@
             updatePrevNextButtons();
             updateDownloadAllButtonState();
             updateItemCountDisplay();
-            sortButtonsContainer.style.display = 'flex';
             
             requestAnimationFrame(() => {
                 renderFileBrowser(items);
-                hideSkeletonLoader();
                 if (items.length > 0 && statusMessageEl.classList.contains('visible') && !statusMessageEl.textContent.toLowerCase().includes('error')) {
                      hideLoading();
-                } else if (items.length === 0 && (!path || path === '')) {
-                    displayStatus(`Archive empty or failed load. ${sanitizeErrorMessage("Empty root directory or load failure", "updateDirectoryView-empty-root")}`, false);
                 } else if (items.length === 0) {
-                    if (statusMessageEl.classList.contains('visible') && !statusMessageEl.textContent.toLowerCase().includes('error')) {
-                         hideLoading();
-                    }
+                    displayStatus(isRoot ? `Archive empty or failed to load.` : 'This folder is empty.', false);
                 }
             });
         }
-
+        
         function getItemsInDirectory(allItems, dirPath) {
-            const items = new Map();
+            const itemsMap = new Map();
             const dirPathLength = dirPath.length;
+            const isRoot = dirPath === '';
+
             allItems.forEach(item => {
                 if (!item.path.startsWith(dirPath) || item.path === dirPath) return;
+
+                // NEW: Hide all images in root directory
+                if (isRoot && item.isImage) return;
+
                 const relativePath = item.path.substring(dirPathLength);
                 const slashIndex = relativePath.indexOf('/');
-                if (slashIndex === -1) {
-                    if (!item.isDirectory) items.set(item.path, item);
-                } else {
+
+                if (slashIndex === -1) { // It's a file in the current directory
+                    if (!item.isDirectory) itemsMap.set(item.path, { ...item });
+                } else { // It's in a subdirectory
                     const firstPart = relativePath.substring(0, slashIndex);
                     const subDirPath = dirPath + firstPart + '/';
-                    if (!items.has(subDirPath)) {
-                        let dirEntry = allArchiveFiles.find(d => d.path === subDirPath && d.isDirectory);
-                        if (dirEntry) items.set(subDirPath, dirEntry);
-                        else {
+                    if (!itemsMap.has(subDirPath)) {
+                        let dirEntry = allItems.find(d => d.path === subDirPath && d.isDirectory);
+                        if (dirEntry) {
+                            itemsMap.set(subDirPath, { ...dirEntry, coverArt: coverMap.get(subDirPath) || null });
+                        } else { // Create a synthetic directory entry if needed
                             const yearMatch = firstPart.match(/\((\d{4})\)$/);
-                            const year = yearMatch ? parseInt(yearMatch[1], 10) : null;
-                            items.set(subDirPath, {
-                                name: subDirPath, path: subDirPath, displayName: firstPart, year: year,
-                                isDirectory: true, isAudio: false, size: 0, format: 'Dir (Synth)'
+                            itemsMap.set(subDirPath, {
+                                name: subDirPath, path: subDirPath, displayName: firstPart, year: yearMatch ? parseInt(yearMatch[1], 10) : null,
+                                isDirectory: true, isAudio: false, isImage: false, size: 0,
+                                coverArt: coverMap.get(subDirPath) || null
                             });
                         }
                     }
-                    if (item.isDirectory && item.path.endsWith('/') && slashIndex === (relativePath.length - 1)) {
-                        if (!items.has(item.path)) items.set(item.path, item);
-                    }
                 }
             });
-            allItems.forEach(item => {
-                if (item.isDirectory && item.path.startsWith(dirPath) && item.path !== dirPath) {
-                    const relativePath = item.path.substring(dirPathLength);
-                    if (relativePath.indexOf('/') === relativePath.length - 1) {
-                        if (!items.has(item.path)) items.set(item.path, item);
+
+            const dirCoverArtPath = coverMap.get(dirPath);
+            if (dirCoverArtPath) {
+                for (const item of itemsMap.values()) {
+                    if (item.isAudio && !item.coverArt) { // Assign folder cover only if track has no specific cover
+                        item.coverArt = dirCoverArtPath;
                     }
                 }
-            });
-            return Array.from(items.values());
-        }
-
-        function getCoverForFile(filePath) {
-            if (!filePath) return null;
-            const folderPath = filePath.substring(0, filePath.lastIndexOf('/') + 1);
-            return folderCovers.get(folderPath) || null;
-        }
-
-        function renderFileBrowser(items) {
-            fileBrowserContainerEl.innerHTML = ''; fileBrowserContainerEl.className = '';
-            if (items.length === 0) {
-                return;
             }
-            const allRenderedItems = fileBrowserContainerEl.querySelectorAll('.file-item-list.playing-track, .file-item-grid.playing-track');
+            return Array.from(itemsMap.values());
+        }
+
+        // --- NEW: Centralized Rendering ---
+        function renderFileBrowser(items) {
+            fileBrowserContainerEl.innerHTML = ''; 
+            fileBrowserContainerEl.className = '';
+            hideSkeletonLoader();
+            
+            if (items.length === 0) return;
+
+            // Clear previous playing state indicators
+            const allRenderedItems = fileBrowserContainerEl.querySelectorAll('.playing-track');
             allRenderedItems.forEach(it => it.classList.remove('playing-track'));
 
-            if (currentLayoutMode === 'list') { fileBrowserContainerEl.classList.add('file-browser-list'); renderFileBrowserList(items); }
-            else { fileBrowserContainerEl.classList.add('file-browser-grid'); renderFileBrowserGrid(items); }
+            // Call the appropriate render function based on the layout
+            if (currentLayoutMode === 'list') {
+                fileBrowserContainerEl.classList.add('file-browser-list');
+                renderFileBrowserList(items); 
+            } else {
+                fileBrowserContainerEl.classList.add('file-browser-grid');
+                renderFileBrowserGrid(items);
+            }
 
+            // Re-apply playing state to the new item
             if (currentPlayingFile) {
-                const currentItemEl = fileBrowserContainerEl.querySelector(`.file-item-${currentLayoutMode}[data-path="${CSS.escape(currentPlayingFile.path)}"]`);
-                if (currentItemEl) {
-                    currentItemEl.classList.add('playing-track');
-                }
+                const currentItemEl = fileBrowserContainerEl.querySelector(`[data-path="${CSS.escape(currentPlayingFile.path)}"]`);
+                if (currentItemEl) currentItemEl.classList.add('playing-track');
             }
         }
-
-        function createTrackDownloadButtonHTML(itemPath, itemDisplayName) {
-            return `
-                <button class="track-download-btn" title="Download ${itemDisplayName}" data-path="${itemPath}">
-                    <div class="btn-content-wrapper">
-                        <span class="btn-icon"><i class="fas fa-download"></i></span>
-                        <svg class="circular-progress" viewBox="0 0 36 36">
-                            <circle class="progress-background" cx="18" cy="18" r="15.9155" fill="transparent" stroke-width="3"></circle>
-                            <circle class="progress-bar-circle" cx="18" cy="18" r="15.9155" fill="transparent" stroke-width="3" stroke-dasharray="100" stroke-dashoffset="100"></circle>
-                        </svg>
-                    </div>
-                    <span class="download-progress-text">0%</span>
-                    <span class="loader btn-loader"></span>
-                </button>`;
-        }
-
-        function renderFileBrowserGrid(items) { 
+        
+        function renderFileBrowserGrid(items) {
             const isSearchMode = searchBox.value.trim() !== '' && searchContainer.classList.contains('active');
-            items.forEach(item => { 
-                const itemEl = document.createElement('div'); 
-                itemEl.className = 'file-item-grid'; 
-                itemEl.dataset.path = item.path; 
-                const icon = document.createElement('div'); 
-                icon.className = 'file-icon-grid'; 
-                const nameEl = document.createElement('div'); 
-                nameEl.className = 'file-name-grid'; 
-                nameEl.textContent = item.displayName || '[No Name]'; 
-                nameEl.title = item.displayName || item.path; 
-                const infoEl = document.createElement('div'); 
-                infoEl.className = 'file-info-grid'; 
-                if (item.isDirectory) { 
-                    icon.innerHTML = '<i class="fas fa-folder"></i>'; 
-                    icon.classList.add('folder'); 
-                    itemEl.addEventListener('click', (e) => { if (!e.target.closest('.track-download-btn')) updateDirectoryView(item.path); }); 
-                    infoEl.textContent = item.year || 'Folder';
-                } else if (item.isAudio) { 
-                    const coverUrl = getCoverForFile(item.path);
-                    if (coverUrl) {
-                        icon.innerHTML = `<img src="${coverUrl}" alt="Cover" class="grid-view-cover-art">`;
-                    } else {
-                        icon.innerHTML = '<i class="fas fa-music"></i>'; 
-                    }
-                    itemEl.addEventListener('click', (e) => { if (!e.target.closest('.track-download-btn, .item-jump-to-folder-btn')) playAudioFile(item, currentTracklist); }); 
-                    infoEl.textContent = formatFileSize(item.size); 
-                    if (isSearchMode) {
-                        itemEl.insertAdjacentHTML('beforeend', `
-                            <button class="item-jump-to-folder-btn" title="Go to folder" data-path="${item.path}">
-                                <i class="fas fa-folder-open"></i>
-                            </button>
-                        `);
-                    }
-                    itemEl.insertAdjacentHTML('beforeend', createTrackDownloadButtonHTML(item.path, item.displayName));
-                } else { 
-                    icon.innerHTML = '<i class="fas fa-file"></i>'; 
-                    infoEl.textContent = formatFileSize(item.size); 
-                    itemEl.style.cursor = 'default'; 
-                    itemEl.style.opacity = '0.7'; 
-                } 
-                itemEl.appendChild(icon); 
-                itemEl.appendChild(nameEl); 
-                itemEl.appendChild(infoEl); 
-                fileBrowserContainerEl.appendChild(itemEl); 
-            }); 
+            items.forEach(item => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'file-item-grid';
+                itemEl.dataset.path = item.path;
+                
+                let artworkHTML, infoText, itemClass = '', hasCover = !!item.coverArt;
+                const coverUrl = item.coverArt ? `${archiveDownloadUrlBase}/${encodeURIComponent(item.coverArt)}` : '';
+
+                const artworkContainer = document.createElement('div');
+                artworkContainer.className = 'grid-item-artwork';
+                
+                if (item.isDirectory) {
+                    itemClass = 'is-folder';
+                    artworkHTML = `<img src="${coverUrl}" class="cover-art-image" style="${!hasCover ? 'display:none;' : ''}" loading="lazy" alt="Folder cover"><div class="icon-fallback folder" style="${hasCover ? 'display:none;' : ''}"><i class="fas fa-folder"></i></div>`;
+                    infoText = item.year || 'Folder';
+                } else if (item.isAudio) {
+                    itemClass = 'is-audio';
+                    artworkHTML = `<img src="${coverUrl}" class="cover-art-image" style="${!hasCover ? 'display:none;' : ''}" loading="lazy" alt="Track cover"><div class="icon-fallback music" style="${hasCover ? 'display:none;' : ''}"><i class="fas fa-music"></i></div><div class="play-overlay"><i class="fas fa-play"></i></div>`;
+                    infoText = formatFileSize(item.size);
+                } else if (item.isImage) {
+                    itemClass = 'is-image';
+                    const imageUrl = `${archiveDownloadUrlBase}/${encodeURIComponent(item.path)}`;
+                    artworkHTML = `<img src="${imageUrl}" class="cover-art-image" loading="lazy" alt="Image"><div class="icon-fallback image" style="display:none;"><i class="fas fa-image"></i></div>`;
+                    infoText = formatFileSize(item.size);
+                } else {
+                    itemClass = 'non-interactive';
+                    artworkHTML = `<div class="icon-fallback"><i class="fas fa-file"></i></div>`;
+                    infoText = formatFileSize(item.size);
+                }
+                
+                itemEl.classList.add(...itemClass.split(' '));
+                artworkContainer.innerHTML = artworkHTML;
+                
+                let jumpButtonHTML = isSearchMode ? `<button class="item-jump-to-folder-btn" title="Go to folder" data-path="${item.path}"><i class="fas fa-folder-open"></i></button>` : '';
+
+                const infoContainer = document.createElement('div');
+                infoContainer.className = 'grid-item-info';
+                infoContainer.innerHTML = `<div class="file-name-grid" title="${item.displayName || item.path}">${item.displayName || '[No Name]'}</div><div class="file-info-grid"><span>${infoText}</span>${jumpButtonHTML}</div>`;
+                
+                itemEl.appendChild(artworkContainer);
+                itemEl.appendChild(infoContainer);
+                fileBrowserContainerEl.appendChild(itemEl);
+            });
         }
 
         function renderFileBrowserList(items) { 
             const isSearchMode = searchBox.value.trim() !== '' && searchContainer.classList.contains('active');
             items.forEach(item => { 
                 const itemEl = document.createElement('div'); 
-                itemEl.className = `file-item-list ${item.isDirectory || item.isAudio ? '' : 'non-interactive'}`; 
+                const isInteractive = item.isDirectory || item.isAudio || item.isImage;
+                itemEl.className = `file-item-list ${isInteractive ? '' : 'non-interactive'}`; 
+                if (item.isDirectory) itemEl.classList.add('is-folder');
+                if (item.isAudio) itemEl.classList.add('is-audio');
+                if (item.isImage) itemEl.classList.add('is-image');
                 itemEl.dataset.path = item.path; 
-                const icon = document.createElement('div'); 
-                icon.className = 'file-icon-list'; 
-                const nameEl = document.createElement('div'); 
-                nameEl.className = 'file-name-list'; 
-                nameEl.textContent = item.title || item.displayName || '[No Name]'; 
-                nameEl.title = item.displayName || item.path; 
-                const infoEl = document.createElement('div'); 
-                infoEl.className = 'file-info-list'; 
-                const durationEl = document.createElement('span'); 
-                durationEl.className = 'file-duration-list'; 
-                const sizeEl = document.createElement('span'); 
-                sizeEl.className = 'file-size-list'; 
+                
+                const icon = document.createElement('div'); icon.className = 'file-icon-list'; 
+                const nameEl = document.createElement('div'); nameEl.className = 'file-name-list'; nameEl.textContent = item.title || item.displayName || '[No Name]'; nameEl.title = item.displayName || item.path; 
+                const infoEl = document.createElement('div'); infoEl.className = 'file-info-list'; 
+                const durationEl = document.createElement('span'); durationEl.className = 'file-duration-list'; 
+                const sizeEl = document.createElement('span'); sizeEl.className = 'file-size-list'; 
+                
                 if (item.isDirectory) { 
-                    icon.innerHTML = '<i class="fas fa-folder"></i>'; 
-                    icon.classList.add('folder'); 
-                    itemEl.addEventListener('click', (e) => { if (!e.target.closest('.track-download-btn')) updateDirectoryView(item.path); }); 
+                    icon.innerHTML = '<i class="fas fa-folder"></i>'; icon.classList.add('folder'); 
                     sizeEl.textContent = item.year || 'Folder'; 
-                    itemEl.style.cursor = 'pointer'; 
                 } else if (item.isAudio) { 
-                    const coverUrl = getCoverForFile(item.path);
-                    if (coverUrl) {
-                        icon.innerHTML = `<img src="${coverUrl}" alt="Cover" class="list-view-cover-art">`;
-                    } else {
-                        icon.innerHTML = '<i class="fas fa-music"></i>'; 
-                    }
-                    nameEl.addEventListener('click', () => playAudioFile(item, currentTracklist)); 
+                    icon.innerHTML = '<i class="fas fa-music"></i>'; 
                     durationEl.textContent = item.duration ? formatTime(item.duration) : '--:--'; 
                     durationEl.dataset.path = item.path; 
                     sizeEl.textContent = formatFileSize(item.size); 
-                    if (isSearchMode) {
-                        infoEl.insertAdjacentHTML('beforeend', `
-                            <button class="item-jump-to-folder-btn" title="Go to folder" data-path="${item.path}">
-                                <i class="fas fa-folder-open"></i>
-                            </button>
-                        `);
-                    }
+                    if (isSearchMode) infoEl.insertAdjacentHTML('beforeend', `<button class="item-jump-to-folder-btn" title="Go to folder" data-path="${item.path}"><i class="fas fa-folder-open"></i></button>`);
                     infoEl.insertAdjacentHTML('beforeend', createTrackDownloadButtonHTML(item.path, item.displayName));
-                    itemEl.style.cursor = 'default'; 
+                } else if (item.isImage) {
+                    icon.innerHTML = '<i class="fas fa-image"></i>'; icon.classList.add('image');
+                    sizeEl.textContent = formatFileSize(item.size);
                 } else { 
                     icon.innerHTML = '<i class="fas fa-file"></i>'; 
                     sizeEl.textContent = formatFileSize(item.size); 
                 } 
-                itemEl.appendChild(icon); 
-                itemEl.appendChild(nameEl); 
-                infoEl.insertBefore(durationEl, infoEl.firstChild); 
-                infoEl.insertBefore(sizeEl, durationEl.nextSibling); 
+                
+                itemEl.appendChild(icon); itemEl.appendChild(nameEl); 
+                infoEl.insertBefore(durationEl, infoEl.firstChild); infoEl.insertBefore(sizeEl, durationEl.nextSibling); 
                 itemEl.appendChild(infoEl); 
                 fileBrowserContainerEl.appendChild(itemEl); 
             }); 
         }
+
+        function createTrackDownloadButtonHTML(itemPath, itemDisplayName) {
+            return `<button class="track-download-btn" title="Download ${itemDisplayName}" data-path="${itemPath}"><div class="btn-content-wrapper"><span class="btn-icon"><i class="fas fa-download"></i></span><svg class="circular-progress" viewBox="0 0 36 36"><circle class="progress-background" cx="18" cy="18" r="15.9155" fill="transparent" stroke-width="3.5"></circle><circle class="progress-bar-circle" cx="18" cy="18" r="15.9155" fill="transparent" stroke-width="3.5" stroke-dasharray="100" stroke-dashoffset="100"></circle></svg><span class="download-progress-text">0%</span></div></button>`;
+        }
+        
+        // --- End of Rendering Functions ---
+
         function formatFileSize(bytes) { if (bytes === undefined || bytes === null || bytes < 0) return ''; if (bytes === 0) return '0 B'; if (bytes < 1024) return bytes + ' B'; const i = Math.floor(Math.log(bytes) / Math.log(1024)); const units = ['B', 'KB', 'MB', 'GB', 'TB']; const unitIndex = Math.min(i, units.length - 1); const fixedDigits = unitIndex >= 2 ? 1 : 0; return parseFloat((bytes / Math.pow(1024, unitIndex)).toFixed(fixedDigits)) + ' ' + units[unitIndex];}
 
         function updateBreadcrumbs() {
             directoryPathEl.innerHTML = '';
+            updateViewControls();
             if (searchBox.value.trim() && searchContainer.classList.contains('active')) {
                 const searchCrumbContainer = document.createElement('div');
-                searchCrumbContainer.style.display = 'flex';
-                searchCrumbContainer.style.alignItems = 'center';
-                searchCrumbContainer.style.gap = '10px';
-
+                searchCrumbContainer.style.display = 'flex'; searchCrumbContainer.style.alignItems = 'center'; searchCrumbContainer.style.gap = '10px';
                 const searchCrumb = createFolderCrumb(`Search: "${searchBox.value}"`, '', true);
                 searchCrumbContainer.appendChild(searchCrumb);
-
                 const exitSearchBtn = document.createElement('button');
-                exitSearchBtn.innerHTML = '<i class="fas fa-times"></i> Exit Search';
-                exitSearchBtn.title = 'Clear search and return to folder view';
-                exitSearchBtn.className = 'exit-search-btn';
+                exitSearchBtn.innerHTML = '<i class="fas fa-times"></i> Exit Search'; exitSearchBtn.title = 'Clear search and return to folder view'; exitSearchBtn.className = 'exit-search-btn';
                 exitSearchBtn.addEventListener('click', () => {
                     searchBox.value = '';
-                    if (searchContainer.classList.contains('active')) {
-                        toggleSearch(false);
-                    }
-                    if (currentMainView !== VIEW_MODE_FOLDER) {
-                        setMainViewMode(VIEW_MODE_FOLDER);
-                    } else {
-                        updateDirectoryView(currentDirectory);
-                    }
+                    if (searchContainer.classList.contains('active')) toggleSearch(false);
+                    if (currentMainView !== VIEW_MODE_FOLDER) setMainViewMode(VIEW_MODE_FOLDER);
+                    else updateDirectoryView(currentDirectory);
                 });
                 searchCrumbContainer.appendChild(exitSearchBtn);
                 directoryPathEl.appendChild(searchCrumbContainer);
-
             } else if (currentMainView === VIEW_MODE_FOLDER) {
                 const rootCrumb = createFolderCrumb('Root', '', currentDirectory === '');
                 directoryPathEl.appendChild(rootCrumb);
                 const parts = currentDirectory.split('/').filter(part => part !== '');
                 let pathAccumulator = '';
                 parts.forEach((part, index) => {
-                    pathAccumulator += part + '/';
-                    addSeparator();
-                    const crumb = createFolderCrumb(part, pathAccumulator, index === parts.length - 1);
-                    directoryPathEl.appendChild(crumb);
+                    pathAccumulator += part + '/'; addSeparator();
+                    directoryPathEl.appendChild(createFolderCrumb(part, pathAccumulator, index === parts.length - 1));
                 });
             }
         }
         function addSeparator() { const separator = document.createElement('span'); separator.className = 'directory-separator'; separator.innerHTML = '›'; directoryPathEl.appendChild(separator); }
         function createFolderCrumb(text, path, isCurrent) { const crumb = document.createElement('span'); crumb.className = `directory-crumb ${isCurrent ? 'current' : ''}`; crumb.textContent = text; if (!isCurrent) { crumb.addEventListener('click', () => updateDirectoryView(path)); } return crumb; }
+
+        function updateViewControls() {
+            const isRoot = currentDirectory === '';
+            gridListToggleContainer.style.display = isRoot ? 'none' : 'flex';
+        }
 
         function toggleSearch(forceState) {
             const activate = forceState !== undefined ? forceState : !searchContainer.classList.contains('active');
@@ -1446,11 +1325,8 @@
             clearTimeout(searchDebounceTimeout);
             searchDebounceTimeout = setTimeout(() => {
                 const searchTerm = searchBox.value.trim();
-                if (searchTerm) {
-                    performSearch(searchTerm);
-                } else {
-                    updateDirectoryView(currentDirectory); // Go back to folder view if search is cleared
-                }
+                if (searchTerm) performSearch(searchTerm);
+                else updateDirectoryView(currentDirectory);
             }, SEARCH_DEBOUNCE_MS);
         }
 
@@ -1459,67 +1335,37 @@
             fileBrowserContainerEl.innerHTML = '';
             statusMessageEl.innerHTML = `<span class="loader"></span>Searching...`;
             statusMessageEl.classList.add('visible');
-
             const searchWords = searchTerm.toLowerCase().split(/\s+/).filter(word => word.length > 0);
             const results = [];
-
-            const filesToSearch = allArchiveFiles.filter(file => file.isAudio);
-
+            const filesToSearch = allArchiveFiles.filter(file => !file.isDirectory); // Search all files
             for (let i = 0; i < filesToSearch.length; i++) {
                 const file = filesToSearch[i];
-                const titleLower = (file.title || file.displayName || '').toLowerCase();
-                const artistLower = (file.artist || '').toLowerCase();
-                const albumLower = (file.album || '').toLowerCase();
-                const pathLower = file.path.toLowerCase();
-
-                const combinedMeta = `${titleLower} ${artistLower} ${albumLower} ${pathLower}`;
-
+                const combinedMeta = `${(file.title || file.displayName || '').toLowerCase()} ${(file.artist || '').toLowerCase()} ${(file.album || '').toLowerCase()} ${file.path.toLowerCase()}`;
                 if (searchWords.every(word => combinedMeta.includes(word))) {
-                    let score = 0;
-                    if (titleLower === searchTerm) {
-                        score = 100; // Exact title match
-                    } else if (titleLower.startsWith(searchTerm)) {
-                        score = 90; // Starts with
-                    } else if (searchWords.every(word => titleLower.includes(word))) {
-                        score = 50; // All words in title
-                    } else {
-                        score = 10; // Found elsewhere
-                    }
-                    results.push({ ...file, score });
+                    results.push({ ...file });
                 }
-
-                if ((i + 1) % SEARCH_CHUNK_SIZE === 0) {
-                    await new Promise(resolve => setTimeout(resolve, 0));
-                }
+                if ((i + 1) % SEARCH_CHUNK_SIZE === 0) await new Promise(resolve => setTimeout(resolve, 0));
             }
-
-            results.sort((a, b) => {
-                if (b.score !== a.score) {
-                    return b.score - a.score;
-                }
-                return (a.title || a.displayName).localeCompare(b.title || b.displayName);
-            });
-
+            results.sort((a, b) => (a.title || a.displayName).localeCompare(b.title || b.displayName));
             currentDirectoryItems = results;
-            currentTracklist = results;
+            currentTracklist = results.filter(item => item.isAudio);
             currentTrackIndex = currentPlayingFile ? currentTracklist.findIndex(track => track.path === currentPlayingFile.path) : -1;
             
+            // For search results, let's default to list view as it's more informative for mixed file types
+            currentLayoutMode = 'list'; 
+            applyLayoutMode();
+            gridListToggleContainer.style.display = 'flex'; // Allow toggling in search results
+
             updatePrevNextButtons();
             updateDownloadAllButtonState();
             updateItemCountDisplay();
             updateBreadcrumbs();
-            
-            sortButtonsContainer.style.display = 'none';
-
+            sortButtonsContainer.style.display = 'none'; // Hide sorting in search
             renderFileBrowser(results);
-            hideSkeletonLoader();
-            if (results.length > 0) {
-                hideLoading();
-            }
+            if (results.length > 0) hideLoading();
         }
 
         async function getMetadataFromTags(file, arrayBuffer) { return new Promise((resolve) => { if (typeof jsmediatags === 'undefined') { resolve({}); return; } jsmediatags.read(new Blob([arrayBuffer]), { onSuccess: (tag) => resolve({ title: tag.tags.title, artist: tag.tags.artist, album: tag.tags.album, picture: tag.tags.picture }), onError: (error) => { console.warn('jsmediatags error:', file?.path, error.type, error.info); resolve({}); } }); }); }
-        
         function displayMetadataInPlayer(metadata) {
             const title = metadata?.title || currentPlayingFile?.title || currentPlayingFile?.displayName || 'Unknown Title';
             const artist = metadata?.artist || currentPlayingFile?.artist || UNKNOWN_ARTIST;
@@ -1535,10 +1381,7 @@
             albumArtLoader.classList.remove('visible');
             albumArtIcon.classList.remove('hidden');
             albumArtImg.classList.remove('loaded', 'loading'); albumArtImg.src = ''; albumArtImg.removeAttribute('style');
-            
-            let artFound = false;
 
-            // 1. Try embedded art
             if (metadata?.picture && metadata.picture.data) {
                 try {
                     const { data, format } = metadata.picture; let base64String = "";
@@ -1548,28 +1391,9 @@
                     albumArtImg.onerror = function() { this.classList.remove('loading'); albumArtIcon.classList.remove('hidden'); };
                     albumArtImg.classList.add('loading');
                     albumArtImg.src = imageUrl;
-                    artFound = true;
-                } catch (e) { console.error("Error processing album art:", e); }
-            }
-
-            // 2. If no embedded art, try folder cover
-            if (!artFound && currentPlayingFile) {
-                const coverUrl = getCoverForFile(currentPlayingFile.path);
-                if (coverUrl) {
-                    albumArtImg.onload = function() { setTimeout(() => { this.classList.remove('loading'); this.classList.add('loaded'); albumArtIcon.classList.add('hidden'); }, 50); };
-                    albumArtImg.onerror = function() { this.classList.remove('loading'); albumArtIcon.classList.remove('hidden'); };
-                    albumArtImg.classList.add('loading');
-                    albumArtImg.src = coverUrl;
-                    artFound = true;
-                }
-            }
-            
-            // 3. If still no art, ensure icon is visible
-            if (!artFound) {
-                albumArtIcon.classList.remove('hidden');
-            }
+                } catch (e) { console.error("Error processing album art:", e); albumArtIcon.classList.remove('hidden'); }
+            } else { albumArtIcon.classList.remove('hidden'); }
         }
-
         function updateFileDurationInList(filePath, durationSeconds) { if (currentLayoutMode !== 'list' || !durationSeconds || !isFinite(durationSeconds)) return; const durationStr = formatTime(durationSeconds); const escapedPath = CSS.escape(filePath); const durationElement = fileBrowserContainerEl.querySelector(`.file-duration-list[data-path="${escapedPath}"]`); if (durationElement && durationElement.textContent !== durationStr) durationElement.textContent = durationStr; }
 
         function manageCache(filePath, data) { if (audioCache.size >= MAX_CACHE_SIZE) { const oldestPath = cacheOrder.shift(); if (oldestPath) audioCache.delete(oldestPath); } audioCache.set(filePath, { ...data, timestamp: Date.now() }); cacheOrder.push(filePath); }
@@ -1578,7 +1402,7 @@
             if (!file || !file.isAudio) return;
             if (!audioContext) { setupAudioContext(); if (!audioContext) { alert("Audio not ready. Click page first."); return; } }
 
-            const allItems = fileBrowserContainerEl.querySelectorAll('.file-item-list.playing-track, .file-item-grid.playing-track');
+            const allItems = fileBrowserContainerEl.querySelectorAll('.playing-track');
             allItems.forEach(it => it.classList.remove('playing-track'));
 
             if (currentPlayingFile?.path === file.path && isPlaying && currentAudioBuffer) { togglePlayback(); return; }
@@ -1590,10 +1414,8 @@
             currentTrackIndex = currentTracklist.findIndex(track => track.path === file.path);
             
             if (currentPlayingFile) {
-                const currentItemEl = fileBrowserContainerEl.querySelector(`.file-item-${currentLayoutMode}[data-path="${CSS.escape(currentPlayingFile.path)}"]`);
-                if (currentItemEl) {
-                    currentItemEl.classList.add('playing-track');
-                }
+                const currentItemEl = fileBrowserContainerEl.querySelector(`[data-path="${CSS.escape(currentPlayingFile.path)}"]`);
+                if (currentItemEl) currentItemEl.classList.add('playing-track');
             }
             
             updatePlayerUI(true, 'Connecting...');
@@ -1618,16 +1440,11 @@
 
             const progressCb = (percent, totalBytes, receivedBytes) => {
                 if (!currentPlayingFile || file.path !== currentPlayingFile.path) return;
-                let percentageText;
-                if (percent === -1) { percentageText = `${formatFileSize(receivedBytes)}`; }
-                else { percentageText = `${Math.round(percent)}%`; }
-                
+                let percentageText = (percent === -1) ? `${formatFileSize(receivedBytes)}` : `${Math.round(percent)}%`;
                 albumArtLoadingPercentageEl.textContent = percentageText;
-                
                 const downloadStatusMsg = `Downloading... ${percentageText}`;
-                if (playerState === 'super-minimized' && miniTitleEl) {
-                     miniTitleEl.textContent = `DL: ${percentageText}`;
-                } else if (nowPlayingArtistAlbumEl.textContent.startsWith('Downloading...') || nowPlayingArtistAlbumEl.textContent.startsWith('Connecting...') || nowPlayingArtistAlbumEl.textContent.startsWith('Retrying...')) {
+                if (playerState === 'super-minimized' && miniTitleEl) miniTitleEl.textContent = `DL: ${percentageText}`;
+                else if (nowPlayingArtistAlbumEl.textContent.startsWith('Downloading...') || nowPlayingArtistAlbumEl.textContent.startsWith('Connecting...') || nowPlayingArtistAlbumEl.textContent.startsWith('Retrying...')) {
                      nowPlayingArtistAlbumEl.textContent = downloadStatusMsg;
                 }
             };
@@ -1676,7 +1493,6 @@
         async function fetchWithTimeoutAndRetry({url, timeout = FETCH_TIMEOUT_MS, retries = MAX_RETRIES, progressCallback = null, externalSignal = null}) {
             let attempts = 0; 
             const internalController = new AbortController();
-            
             const signal = externalSignal || internalController.signal;
             const combinedAbortHandler = () => { internalController.abort("External signal aborted"); };
             if(externalSignal) externalSignal.addEventListener('abort', combinedAbortHandler, {once: true});
@@ -1685,10 +1501,7 @@
                 attempts++; const timeoutId = setTimeout(() => internalController.abort("Timeout"), timeout);
                 try {
                     if (signal.aborted) throw new Error("Operation aborted before starting fetch.");
-                    if (attempts > 1) {
-                        console.log(`Retrying fetch (Attempt ${attempts}/${retries + 1})`);
-                        await new Promise(resolve => setTimeout(resolve, 500 * (attempts -1) ));
-                    }
+                    if (attempts > 1) await new Promise(resolve => setTimeout(resolve, 500 * (attempts -1) ));
                     const response = await fetch(url, { signal }); clearTimeout(timeoutId);
                     if (!response.ok) throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
                     if (signal.aborted) throw new Error(`Aborted before body: ${signal.reason}`);
@@ -1696,18 +1509,19 @@
                     if (progressCallback && response.body) {
                         const contentLength = response.headers.get('content-length'); const totalBytes = contentLength ? parseInt(contentLength, 10) : 0; let receivedBytes = 0;
                         const reader = response.body.getReader(); const chunks = [];
-                        if (attempts === 1) progressCallback(0, totalBytes, receivedBytes);
-                        
+                        if (attempts === 1 && progressCallback) progressCallback(0, totalBytes, receivedBytes);
                         while (true) {
                             if (signal.aborted) throw new Error("Fetch aborted during chunk reading.");
                             const { done, value } = await reader.read(); if (done) break; chunks.push(value); receivedBytes += value.length;
-                            if (totalBytes > 0) { const percent = (receivedBytes / totalBytes) * 100; progressCallback(percent, totalBytes, receivedBytes); }
-                            else { progressCallback(-1, totalBytes, receivedBytes); }
+                            if (progressCallback) {
+                                if (totalBytes > 0) progressCallback((receivedBytes / totalBytes) * 100, totalBytes, receivedBytes);
+                                else progressCallback(-1, totalBytes, receivedBytes);
+                            }
                         }
                         if (signal.aborted) throw new Error(`Aborted after body: ${signal.reason}`);
                         const combined = new Uint8Array(receivedBytes); let offset = 0;
                         for (const chunk of chunks) { combined.set(chunk, offset); offset += chunk.length; }
-                        progressCallback(100, totalBytes, receivedBytes);
+                        if (progressCallback) progressCallback(100, totalBytes, receivedBytes);
                         if(externalSignal) externalSignal.removeEventListener('abort', combinedAbortHandler);
                         return combined.buffer;
                     } else {
@@ -1718,14 +1532,9 @@
                 } catch (error) {
                     clearTimeout(timeoutId);
                     if(externalSignal) externalSignal.removeEventListener('abort', combinedAbortHandler);
-
-                    if (error.name === 'AbortError') {
-                        throw error;
-                    }
+                    if (error.name === 'AbortError') throw error;
                     console.error(`Fetch error (Attempt ${attempts}):`, error);
-                    if (attempts > retries) {
-                        throw new Error(`Fetch failed after ${retries + 1} attempts: ${error.message}`);
-                    }
+                    if (attempts > retries) throw new Error(`Fetch failed after ${retries + 1} attempts: ${error.message}`);
                 }
             }
             throw new Error(`Fetch failed unexpectedly.`);
@@ -1755,15 +1564,9 @@
             sourceNode.onended = handleTrackEnd;
             progressUpdateInterval = setInterval(updateProgress, 250);
             
-            if (isLyricsViewActive) {
-                updatePlayerUI();
-            } else if (playerState === 'minimized' || playerState === 'super-minimized') {
-                playerState = 'standard';
-                applyPlayerState();
-                saveSetting('playerState', playerState);
-            } else {
-                 updatePlayerUI();
-            }
+            if (isLyricsViewActive) updatePlayerUI();
+            else if (playerState !== 'standard') { playerState = 'standard'; applyPlayerState(); saveSetting('playerState', playerState); } 
+            else updatePlayerUI();
         }
         function stopPlayback(clearInfo = false) {
             if (isPlaying && sourceNode && audioContext) _pausedTime = getCurrentPlaybackTime();
@@ -1781,14 +1584,24 @@
                 progressBar.style.width = '0%'; miniProgressBar.style.setProperty('--progress-width', '0%');
                 lyricsContainer.innerHTML = '<p class="lyrics-status">Lyrics will appear here.</p>';
                 lastActiveLyricIndex = -1;
-                const allItems = fileBrowserContainerEl.querySelectorAll('.file-item-list.playing-track, .file-item-grid.playing-track');
-                allItems.forEach(it => it.classList.remove('playing-track'));
+                document.querySelectorAll('.playing-track').forEach(it => it.classList.remove('playing-track'));
                 updatePrevNextButtons();
             }
             updatePlayerUI();
             if(!isLyricsViewActive) applyPlayerState();
         }
-        function togglePlayback() { if (!currentAudioBuffer || !audioContext) return; if (isPlaying) stopPlayback(false); else { const resumeTime = (_pausedTime > 0 && currentAudioBuffer && _pausedTime < currentAudioBuffer.duration) ? _pausedTime : 0; startPlayback(resumeTime); } }
+        function togglePlayback() { 
+            if (!currentAudioBuffer || !audioContext) return; 
+            if (isPlaying) stopPlayback(false); 
+            else { 
+                const resumeTime = (_pausedTime > 0 && currentAudioBuffer && _pausedTime < currentAudioBuffer.duration) ? _pausedTime : 0; 
+                startPlayback(resumeTime); 
+            } 
+            if (currentPlayingFile) {
+                const currentItemEl = fileBrowserContainerEl.querySelector(`[data-path="${CSS.escape(currentPlayingFile.path)}"]`);
+                if(currentItemEl) currentItemEl.classList.toggle('playing-track', isPlaying);
+            }
+        }
         function getCurrentPlaybackTime() { if (!audioContext || !currentAudioBuffer) return 0; if (isPlaying && sourceNode && _startTime > 0) { const elapsedTime = audioContext.currentTime - _startTime; const progressedTime = elapsedTime * currentPlaybackRate; return Math.max(0, Math.min(currentAudioBuffer.duration, _startOffset + progressedTime)); } else return Math.max(0, Math.min(currentAudioBuffer?.duration || 0, _pausedTime)); }
         function handleTrackEnd(event) { const endedNaturally = isPlaying && currentAudioBuffer && Math.abs(getCurrentPlaybackTime() - currentAudioBuffer.duration) < 0.1; if (currentAudioBuffer) _pausedTime = currentAudioBuffer.duration; _startTime = 0; const wasPlaying = isPlaying; isPlaying = false; cleanupPlaybackResources(); updateProgress(); updatePlayerUI(); if (wasPlaying && endedNaturally) playNext(); }
         function seek(offsetSeconds) { if (!currentAudioBuffer || !audioContext) return; const currentPosition = getCurrentPlaybackTime(); let seekTime = currentPosition + offsetSeconds; seekTo(seekTime); }
@@ -1796,109 +1609,79 @@
             if (!currentAudioBuffer || !audioContext) return;
             const seekTime = Math.max(0, Math.min(time, currentAudioBuffer.duration));
             _pausedTime = seekTime;
-            if (isPlaying) {
-                startPlayback(seekTime);
-            } else {
-                _startOffset = seekTime;
-                updateProgress();
-            }
+            if (isPlaying) startPlayback(seekTime);
+            else { _startOffset = seekTime; updateProgress(); }
         }
         function playNext() { if (!currentTracklist || currentTracklist.length === 0) return; let nextIndex = currentTrackIndex + 1; if (nextIndex >= currentTracklist.length) nextIndex = 0; if (currentTracklist[nextIndex]) playAudioFile(currentTracklist[nextIndex], currentTracklist); else stopPlayback(true); }
         function playPrev() { if (!currentTracklist || currentTracklist.length === 0) return; if (getCurrentPlaybackTime() > 3 && currentTrackIndex !== -1) { seekTo(0); return; } let prevIndex = currentTrackIndex - 1; if (prevIndex < 0) prevIndex = currentTracklist.length - 1; if (currentTracklist[prevIndex]) playAudioFile(currentTracklist[prevIndex], currentTracklist); else stopPlayback(true); }
 
-        async function triggerDownload() { if (!currentPlayingFile || !currentPlayingFile.path || downloadBtn.classList.contains('loading') || downloadBtn.disabled) return; downloadBtn.classList.add('loading'); await downloadSpecificTrack(currentPlayingFile.path, downloadBtn, currentPlayingFile.displayName, true); downloadBtn.classList.remove('loading'); }
+        async function triggerDownload() { 
+            if (!currentPlayingFile || !currentPlayingFile.path || downloadBtn.classList.contains('loading') || downloadBtn.disabled) return; 
+            downloadBtn.classList.add('loading');
+            try { await downloadSpecificTrack(currentPlayingFile.path, downloadBtn, currentPlayingFile.displayName, true); } 
+            catch (error) { console.error("Player download failed:", error); } 
+            finally { downloadBtn.classList.remove('loading'); }
+        }
 
         async function downloadSpecificTrack(filePath, buttonElement, displayName = '', isPlayerButton = false) {
             if (!filePath || !buttonElement || buttonElement.classList.contains('loading')) return;
-            if (activeDownloads.has(filePath) && activeDownloads.get(filePath).signal && !activeDownloads.get(filePath).signal.aborted) { console.log(`Download for ${filePath} already in progress or queued.`); return; }
+            if (activeDownloads.has(filePath) && activeDownloads.get(filePath).signal && !activeDownloads.get(filePath).signal.aborted) { console.log(`Download for ${filePath} already in progress.`); return; }
             const fileUrl = `${archiveDownloadUrlBase}/${encodeURIComponent(filePath)}`;
             const filename = displayName || filePath.split('/').pop() || 'download.mp3';
             const progressCircle = isPlayerButton ? null : buttonElement.querySelector('.progress-bar-circle');
             const progressTextElement = isPlayerButton ? null : buttonElement.querySelector('.download-progress-text');
-            const generalLoader = buttonElement.querySelector('.btn-loader');
+
             buttonElement.classList.add('loading');
             buttonElement.disabled = true;
+
+            const radius = progressCircle ? parseFloat(progressCircle.getAttribute('r')) : 0;
+            const circumference = radius ? 2 * Math.PI * radius : 100;
             if (progressCircle) {
-                const radius = parseFloat(progressCircle.getAttribute('r'));
-                if (radius) {
-                    const circumference = 2 * Math.PI * radius;
-                    progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
-                    progressCircle.style.strokeDashoffset = circumference;
-                } else {
-                    console.warn("Progress circle radius not found or invalid for", filePath);
-                }
+                progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
+                progressCircle.style.strokeDashoffset = circumference;
             }
             if (progressTextElement) progressTextElement.textContent = '0%';
-            if (generalLoader && isPlayerButton) generalLoader.style.display = 'inline-block';
+            
             const downloadController = new AbortController();
             activeDownloads.set(filePath, downloadController);
             try {
-                const response = await fetch(fileUrl, { signal: downloadController.signal });
-                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-                if (!response.body) throw new Error("ReadableStream not supported.");
-                const contentLength = response.headers.get('content-length');
-                const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
-                let receivedBytes = 0;
-                const reader = response.body.getReader();
-                const chunks = [];
-                while (true) {
-                    if (downloadController.signal.aborted) throw new Error("Download aborted by user or system.");
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    chunks.push(value);
-                    receivedBytes += value.length;
-                    if (!isPlayerButton) {
-                        if (totalBytes > 0) {
-                            const percent = Math.floor((receivedBytes / totalBytes) * 100);
-                            if (progressTextElement) progressTextElement.textContent = `${percent}%`;
-                            if (progressCircle && progressCircle.style.strokeDasharray) {
-                                const circumference = parseFloat(progressCircle.style.strokeDasharray);
-                                const offset = circumference - (percent / 100) * circumference;
-                                progressCircle.style.strokeDashoffset = offset;
-                            }
-                        } else {
-                            if (progressTextElement) progressTextElement.textContent = formatFileSize(receivedBytes);
+                const buffer = await fetchWithTimeoutAndRetry({
+                    url: fileUrl, externalSignal: downloadController.signal,
+                    progressCallback: (percent) => {
+                        if (!isPlayerButton) {
+                            if (progressTextElement) progressTextElement.textContent = `${Math.round(percent)}%`;
+                            if (progressCircle) progressCircle.style.strokeDashoffset = circumference - (percent / 100) * circumference;
                         }
                     }
-                }
-                if (downloadController.signal.aborted) throw new Error("Download aborted post-chunks.");
+                });
+                
+                if (downloadController.signal.aborted) throw new Error("Download aborted.");
                 if (progressTextElement) progressTextElement.textContent = '100%';
-                if (progressCircle && progressCircle.style.strokeDasharray) {
-                     progressCircle.style.strokeDashoffset = 0;
-                }
-                const blob = new Blob(chunks);
+                if (progressCircle) progressCircle.style.strokeDashoffset = 0;
+                
+                const blob = new Blob([buffer]);
                 const blobUrl = URL.createObjectURL(blob);
                 const link = document.createElement('a');
-                link.href = blobUrl;
-                link.download = filename;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                link.href = blobUrl; link.download = filename;
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
                 setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
             } catch (error) {
-                const userFriendlyError = sanitizeErrorMessage(error.message, `Download failed for: ${filePath}`);
                 if (error.name === 'AbortError') {
                     console.log(`Download aborted: ${filename}`);
                     if (progressTextElement) progressTextElement.textContent = 'X';
                 } else {
                     console.error(`Download failed for ${filename}:`, error);
-                    alert(`Failed to download "${filename}".\n${userFriendlyError}`);
+                    alert(`Failed to download "${filename}".\n${sanitizeErrorMessage(error.message)}`);
                     if (progressTextElement) progressTextElement.textContent = 'ERR';
                 }
             } finally {
                 activeDownloads.delete(filePath);
                 buttonElement.classList.remove('loading');
                 buttonElement.disabled = false;
-                if (generalLoader && isPlayerButton) generalLoader.style.display = 'none';
                 if (!isPlayerButton) {
                     setTimeout(() => {
-                        if (progressCircle && progressCircle.style.strokeDasharray) {
-                            const circumference = parseFloat(progressCircle.style.strokeDasharray);
-                            progressCircle.style.strokeDashoffset = circumference;
-                        }
-                        if (progressTextElement && (progressTextElement.textContent.includes('%') || progressTextElement.textContent === 'ERR' || progressTextElement.textContent === 'X')) {
-                            progressTextElement.textContent = '0%';
-                        }
+                        if (progressCircle) progressCircle.style.strokeDashoffset = circumference;
+                        if (progressTextElement) progressTextElement.textContent = '0%';
                     }, 2000);
                 }
             }
@@ -1917,18 +1700,10 @@
 
             if (miniTitleEl && playerState === 'super-minimized') {
                 miniTitleEl.removeEventListener('click', expandPlayerToStandard);
-                miniTitleEl.style.cursor = 'default';
-                miniTitleEl.title = '';
+                miniTitleEl.style.cursor = 'default'; miniTitleEl.title = '';
                 if (isLoading) {
-                    if (loadingMessage.startsWith('Downloading')) {
-                        const currentPercentageText = albumArtLoadingPercentageEl.textContent || '0%';
-                        miniTitleEl.textContent = `DL: ${currentPercentageText}`;
-                    } else if (loadingMessage.startsWith('Retrying')) {
-                         miniTitleEl.textContent = loadingMessage.substring(0,10) + "...";
-                    } else {
-                        const briefMessage = loadingMessage.includes('...') ? loadingMessage.split('...')[0] : loadingMessage;
-                        miniTitleEl.textContent = briefMessage;
-                    }
+                    const briefMessage = loadingMessage.includes('...') ? loadingMessage.split('...')[0] : loadingMessage;
+                    miniTitleEl.textContent = briefMessage;
                 } else if (hasActiveTrack) {
                     miniTitleEl.textContent = currentPlayingFile.metadata?.title || currentPlayingFile.title || currentPlayingFile.displayName || "Now Playing";
                     miniTitleEl.title = miniTitleEl.textContent;
@@ -1939,28 +1714,12 @@
                     miniTitleEl.addEventListener('click', expandPlayerToStandard);
                 }
             }
-
             if (isLoading) {
-                if (loadingMessage.startsWith('Downloading') || loadingMessage.startsWith('Connecting') || loadingMessage.startsWith('Retrying')) {
-                    albumArtLoader.classList.add('visible');
-                    albumArtIcon.classList.add('hidden');
-                    if (!loadingMessage.startsWith('Downloading')) {
-                        albumArtLoadingPercentageEl.textContent = loadingMessage.includes('...') ? loadingMessage.split('...')[0] : loadingMessage;
-                    }
-                } else {
-                    albumArtLoader.classList.add('visible');
-                    albumArtIcon.classList.add('hidden');
-                    if(albumArtLoadingPercentageEl) albumArtLoadingPercentageEl.textContent = loadingMessage.split('...')[0];
-                }
+                albumArtLoader.classList.add('visible');
+                albumArtIcon.classList.add('hidden');
+                albumArtLoadingPercentageEl.textContent = loadingMessage.split('...')[0];
                 nowPlayingEl.textContent = currentPlayingFile?.displayName || 'Loading...';
-                nowPlayingEl.title = currentPlayingFile?.displayName || 'Loading...';
-                
-                if (!(loadingMessage.startsWith('Downloading') && albumArtLoadingPercentageEl.textContent.includes('%'))) {
-                     nowPlayingArtistAlbumEl.textContent = loadingMessage;
-                } else if (loadingMessage.startsWith('Downloading')) {
-                    nowPlayingArtistAlbumEl.textContent = `Downloading... ${albumArtLoadingPercentageEl.textContent}`;
-                }
-                nowPlayingArtistAlbumEl.title = loadingMessage;
+                nowPlayingArtistAlbumEl.textContent = loadingMessage;
                 if (currentPlayingFile?.path) { const pathParts = currentPlayingFile.path.split('/').filter(p => p); pathParts.pop(); nowPlayingPathEl.textContent = pathParts.join(' / '); } else nowPlayingPathEl.textContent = '';
                 if (playPauseIcon) playPauseIcon.className = 'fas fa-spinner fa-spin';
                 durationEl.textContent = '--:--'; currentTimeEl.textContent = '--:--'; progressBar.style.width = '0%'; miniProgressBar.style.setProperty('--progress-width', '0%');
@@ -1977,55 +1736,35 @@
                 }
                 updateProgress();
             } else {
-                albumArtLoader.classList.remove('visible'); albumArtImg.classList.remove('loaded'); albumArtImg.src = ''; albumArtImg.style.display = 'none'; albumArtIcon.classList.remove('hidden');
-                nowPlayingEl.textContent = 'Not playing'; nowPlayingEl.title = 'Not playing'; nowPlayingArtistAlbumEl.textContent = 'Select an MP3 file'; nowPlayingArtistAlbumEl.title = 'Select an MP3 file'; nowPlayingPathEl.textContent = '';
+                albumArtLoader.classList.remove('visible'); albumArtImg.classList.remove('loaded'); albumArtImg.src = ''; albumArtIcon.classList.remove('hidden');
+                nowPlayingEl.textContent = 'Not playing'; nowPlayingEl.title = 'Not playing'; nowPlayingArtistAlbumEl.textContent = 'Select an MP3 file';
                 if (playPauseIcon) playPauseIcon.className = 'fas fa-play'; playPauseBtn.disabled = true; pitchSlider.disabled = true; revertSpeedBtn.disabled = true; downloadBtn.disabled = true; jumpToFolderBtn.disabled = true; prevBtn.disabled = true; nextBtn.disabled = true; lyricsBtn.disabled = true;
                 durationEl.textContent = '0:00'; currentTimeEl.textContent = '0:00'; progressBar.style.width = '0%'; miniProgressBar.style.setProperty('--progress-width', `0%`);
             }
         }
-        function updateProgress() { if (!audioContext || !currentAudioBuffer || !isFinite(currentAudioBuffer.duration)) { currentTimeEl.textContent = '0:00'; progressBar.style.width = '0%'; miniProgressBar.style.setProperty('--progress-width', `0%`); return; } const currentPosition = getCurrentPlaybackTime(); const duration = currentAudioBuffer.duration; currentTimeEl.textContent = formatTime(currentPosition); if(durationEl.textContent === '--:--' || durationEl.textContent === '0:00') durationEl.textContent = formatTime(duration); const progressPercent = (duration > 0) ? (currentPosition / duration) * 100 : 0; const progressWidth = `${Math.min(100, Math.max(0, progressPercent))}%`; if (progressBar.style.width !== progressWidth) progressBar.style.width = progressWidth; if (miniProgressBar.style.getPropertyValue('--progress-width') !== progressWidth) miniProgressBar.style.setProperty('--progress-width', progressWidth); if (isLyricsViewActive) updateSyncedLyrics(currentPosition); }
+        function updateProgress() { if (!audioContext || !currentAudioBuffer || !isFinite(currentAudioBuffer.duration)) { return; } const currentPosition = getCurrentPlaybackTime(); const duration = currentAudioBuffer.duration; currentTimeEl.textContent = formatTime(currentPosition); if(durationEl.textContent === '--:--' || durationEl.textContent === '0:00') durationEl.textContent = formatTime(duration); const progressPercent = (duration > 0) ? (currentPosition / duration) * 100 : 0; const progressWidth = `${Math.min(100, Math.max(0, progressPercent))}%`; if (progressBar.style.width !== progressWidth) progressBar.style.width = progressWidth; if (miniProgressBar.style.getPropertyValue('--progress-width') !== progressWidth) miniProgressBar.style.setProperty('--progress-width', progressWidth); if (isLyricsViewActive) updateSyncedLyrics(currentPosition); }
         function updateVolumeIcon(volume) { if (!volumeIcon) return; if (volume <= 0) volumeIcon.className = 'fas fa-volume-mute'; else if (volume < 0.5) volumeIcon.className = 'fas fa-volume-down'; else volumeIcon.className = 'fas fa-volume-up'; }
         function updatePrevNextButtons() { const canNavigate = currentTracklist && currentTracklist.length > 0 && currentTrackIndex !== -1; prevBtn.disabled = !canNavigate; nextBtn.disabled = !canNavigate; }
         
-        function expandPlayerToStandard() {
-            if (playerState !== 'standard') {
-                playerState = 'standard';
-                applyPlayerState();
-                saveSetting('playerState', playerState);
-            }
-        }
-
-        function cyclePlayerState() {
-            if (isLyricsViewActive) return;
-            if (playerState === 'standard') playerState = 'minimized';
-            else if (playerState === 'minimized') playerState = 'super-minimized';
-            else playerState = 'standard';
-            applyPlayerState();
-            saveSetting('playerState', playerState);
-        }
-
+        function expandPlayerToStandard() { if (playerState !== 'standard') { playerState = 'standard'; applyPlayerState(); saveSetting('playerState', playerState); } }
+        function cyclePlayerState() { if (isLyricsViewActive) return; if (playerState === 'standard') playerState = 'minimized'; else if (playerState === 'minimized') playerState = 'super-minimized'; else playerState = 'standard'; applyPlayerState(); saveSetting('playerState', playerState); }
         function applyPlayerState() {
             if (isLyricsViewActive) return;
             playerSection.classList.remove('minimized', 'super-minimized', 'standard');
             bodyEl.classList.remove('player-minimized', 'player-super-minimized', 'player-standard');
-
             const toggleIconEl = playerToggleBtn.querySelector('.toggle-icon i');
             playerToggleBtn.style.display = 'flex';
-
             if (playerState === 'minimized') {
-                playerSection.classList.add('minimized');
-                bodyEl.classList.add('player-minimized');
+                playerSection.classList.add('minimized'); bodyEl.classList.add('player-minimized');
                 if (toggleIconEl) toggleIconEl.className = 'fas fa-angle-double-down';
                 playerToggleBtn.title = "Shrink Further";
                 if (miniTitleEl) miniTitleEl.textContent = (currentPlayingFile ? (currentPlayingFile.metadata?.title || currentPlayingFile.title || currentPlayingFile.displayName || "Now Playing") : "Player");
             } else if (playerState === 'super-minimized') {
-                playerSection.classList.add('super-minimized');
-                bodyEl.classList.add('player-super-minimized');
+                playerSection.classList.add('super-minimized'); bodyEl.classList.add('player-super-minimized');
                 if (toggleIconEl) toggleIconEl.className = 'fas fa-angle-up';
                 playerToggleBtn.title = "Expand Player";
             } else {
-                playerSection.classList.add('standard');
-                bodyEl.classList.add('player-standard');
+                playerSection.classList.add('standard'); bodyEl.classList.add('player-standard');
                 if (toggleIconEl) toggleIconEl.className = 'fas fa-angle-down';
                 playerToggleBtn.title = "Minimize Player";
                 if (miniTitleEl) miniTitleEl.innerHTML = '';
@@ -2039,19 +1778,11 @@
         function dismissSearchHint() { if (!searchHintPopup) return; searchHintPopup.style.opacity = '0'; setTimeout(() => searchHintPopup.classList.remove('visible'), 300); try { localStorage.setItem('searchHintDismissed', 'true'); } catch (e) {} }
 
         // --- Lyrics Functions ---
-        function toggleLyricsView() {
-            isLyricsViewActive = !isLyricsViewActive;
-            bodyEl.classList.toggle('lyrics-view-active', isLyricsViewActive);
-            // Re-check sync on view open
-            if (isLyricsViewActive && isPlaying) {
-                lastActiveLyricIndex = -1; // Force re-sync
-                updateSyncedLyrics(getCurrentPlaybackTime());
-            }
-        }
+        function toggleLyricsView() { isLyricsViewActive = !isLyricsViewActive; bodyEl.classList.toggle('lyrics-view-active', isLyricsViewActive); if (isLyricsViewActive && isPlaying) { lastActiveLyricIndex = -1; updateSyncedLyrics(getCurrentPlaybackTime()); } }
         
         async function fetchAndRenderLyrics(file) {
             currentLyrics = null;
-            lyricsContainer.innerHTML = `<p class="lyrics-status loader">Loading lyrics...</p>`;
+            lyricsContainer.innerHTML = `<p class="lyrics-status"><span class="loader"></span> Loading lyrics...</p>`;
             lyricsContainer.className = 'lyrics-container';
             lastActiveLyricIndex = -1;
             
@@ -2059,38 +1790,28 @@
             const artist = file.metadata?.artist || file.artist;
             const album = file.metadata?.album || file.album;
 
-            if (!artist || !title || artist === UNKNOWN_ARTIST) {
-                lyricsContainer.innerHTML = `<p class="lyrics-status">Not enough info to find lyrics.</p>`;
-                return;
-            }
+            if (!artist || !title || artist === UNKNOWN_ARTIST) { lyricsContainer.innerHTML = `<p class="lyrics-status">Not enough info to find lyrics.</p>`; return; }
 
             try {
                 const url = new URL(lyricsApiUrl);
                 url.searchParams.append('track_name', title);
                 url.searchParams.append('artist_name', artist);
-                if (album && album !== UNKNOWN_ALBUM) {
-                    url.searchParams.append('album_name', album);
-                }
-                
+                if (album && album !== UNKNOWN_ALBUM) url.searchParams.append('album_name', album);
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`Lyrics API error: ${response.status}`);
                 const data = await response.json();
                 
-                if (data.error || (!data.syncedLyrics && !data.plainLyrics)) {
-                     lyricsContainer.innerHTML = `<p class="lyrics-status">No lyrics found for this track.</p>`;
-                     return;
-                }
+                if (data.error || (!data.syncedLyrics && !data.plainLyrics)) { lyricsContainer.innerHTML = `<p class="lyrics-status">No lyrics found for this track.</p>`; return; }
 
                 if (data.syncedLyrics) {
                     currentLyrics = { synced: parseLrc(data.syncedLyrics), plain: null };
                     lyricsContainer.innerHTML = currentLyrics.synced.map(line => `<p class="lyrics-line" data-time="${line.time}">${line.text || '&nbsp;'}</p>`).join('');
-                    lyricsContainer.className = 'lyrics-container'; // For synced lyrics
+                    lyricsContainer.className = 'lyrics-container';
                 } else if (data.plainLyrics) {
                     currentLyrics = { synced: null, plain: data.plainLyrics };
                     lyricsContainer.innerHTML = `<p class="lyrics-plain">${data.plainLyrics}</p>`;
-                    lyricsContainer.className = 'lyrics-container plain-text'; // For plain text
+                    lyricsContainer.className = 'lyrics-container plain-text';
                 }
-
             } catch(error) {
                 console.error("Failed to fetch lyrics:", error);
                 lyricsContainer.innerHTML = `<p class="lyrics-status">Could not load lyrics.</p>`;
@@ -2098,50 +1819,27 @@
         }
 
         function parseLrc(lrcText) {
-            const lines = lrcText.split('\n');
-            const parsed = [];
-            const timeRegex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/g;
-            
+            const lines = lrcText.split('\n'); const parsed = []; const timeRegex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/g;
             for (const line of lines) {
-                const text = line.replace(timeRegex, '').trim();
-                let match;
-                timeRegex.lastIndex = 0; // Reset regex
+                const text = line.replace(timeRegex, '').trim(); let match; timeRegex.lastIndex = 0;
                 while ((match = timeRegex.exec(line)) !== null) {
-                    const minutes = parseInt(match[1], 10);
-                    const seconds = parseInt(match[2], 10);
-                    const milliseconds = parseInt(match[3].padEnd(3, '0'), 10);
-                    const time = minutes * 60 + seconds + milliseconds / 1000;
+                    const time = parseInt(match[1], 10) * 60 + parseInt(match[2], 10) + parseInt(match[3].padEnd(3, '0'), 10) / 1000;
                     parsed.push({ time, text });
                 }
             }
-            
             return parsed.sort((a, b) => a.time - b.time);
         }
 
         function updateSyncedLyrics(currentTime) {
             if (!currentLyrics?.synced || currentLyrics.synced.length === 0) return;
-
             let activeIndex = -1;
-            for (let i = currentLyrics.synced.length - 1; i >= 0; i--) {
-                if (currentTime >= currentLyrics.synced[i].time) {
-                    activeIndex = i;
-                    break;
-                }
-            }
-            
+            for (let i = currentLyrics.synced.length - 1; i >= 0; i--) { if (currentTime >= currentLyrics.synced[i].time) { activeIndex = i; break; } }
             if (activeIndex !== lastActiveLyricIndex) {
                 const lines = lyricsContainer.querySelectorAll('.lyrics-line');
-                if (lastActiveLyricIndex !== -1 && lines[lastActiveLyricIndex]) {
-                    lines[lastActiveLyricIndex].classList.remove('active');
-                }
+                if (lastActiveLyricIndex !== -1 && lines[lastActiveLyricIndex]) lines[lastActiveLyricIndex].classList.remove('active');
                 if (activeIndex !== -1 && lines[activeIndex]) {
                     lines[activeIndex].classList.add('active');
-                    // Scroll into view
-                    lines[activeIndex].scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center',
-                        inline: 'nearest'
-                    });
+                    lines[activeIndex].scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
                 }
                 lastActiveLyricIndex = activeIndex;
             }
@@ -2149,116 +1847,86 @@
 
         // --- Multi-Download Functions ---
         function updateDownloadAllButtonState() {
-            if (!downloadAllBtn) return;
-            if (downloadAllBtn.classList.contains('loading')) return;
-
-            const tracksInView = currentDirectoryItems.filter(item => item.isAudio);
-            if (tracksInView.length > 0) {
-                downloadAllBtn.disabled = false;
-                downloadAllBtn.title = `Download ${tracksInView.length} track${tracksInView.length > 1 ? 's' : ''} as a ZIP`;
-            } else {
-                downloadAllBtn.disabled = true;
-                downloadAllBtn.title = "No tracks to download in this view";
-            }
+            if (!downloadAllBtn || downloadAllBtn.classList.contains('loading')) return;
+            const itemsInView = currentDirectoryItems.filter(item => item.isAudio || item.isImage);
+            downloadAllBtn.disabled = itemsInView.length === 0;
+            downloadAllBtn.title = itemsInView.length > 0 ? `Download ${itemsInView.length} item${itemsInView.length > 1 ? 's' : ''} as a ZIP` : "No items to download in this view";
         }
 
         async function triggerMultiDownload() {
             if (downloadAllBtn.classList.contains('loading')) return;
-
             const tracksToDownload = currentDirectoryItems.filter(item => item.isAudio);
-            if (tracksToDownload.length === 0) {
-                alert("There are no audio files in the current view to download.");
-                return;
+            
+            // Also include the folder's cover art if it exists
+            const coverPath = coverMap.get(currentDirectory);
+            let coverFile = null;
+            if (coverPath) {
+                coverFile = allArchiveFiles.find(f => f.path === coverPath);
             }
+            const itemsToDownload = [...tracksToDownload];
+            if (coverFile && !itemsToDownload.some(item => item.path === coverFile.path)) {
+                itemsToDownload.push(coverFile);
+            }
+
+            if (itemsToDownload.length === 0) { alert("There are no downloadable files in the current view."); return; }
             
             multiDownloadAbortController = new AbortController();
-            downloadAllBtn.classList.add('loading');
-            downloadAllBtn.disabled = true;
-
+            downloadAllBtn.classList.add('loading'); downloadAllBtn.disabled = true;
             let zip = new JSZip();
             const failedFiles = [];
-            const totalTracks = tracksToDownload.length;
+            const totalItems = itemsToDownload.length;
 
             try {
-                for (const [index, track] of tracksToDownload.entries()) {
+                for (const [index, item] of itemsToDownload.entries()) {
                     if (multiDownloadAbortController.signal.aborted) throw new Error("Download cancelled by user.");
-                    
-                    const overallProgressText = `Downloading ${index + 1}/${totalTracks}`;
+                    const overallProgressText = `Downloading ${index + 1}/${totalItems}`;
                     downloadAllProgressTextEl.textContent = `${overallProgressText}...`;
-                    console.log(`Downloading file ${index + 1}: ${track.displayName}`);
-                    
-                    const progressCallbackForFile = (percent, totalBytes, receivedBytes) => {
-                        let progressIndicator = "";
-                        if(percent === -1) {
-                            progressIndicator = formatFileSize(receivedBytes);
-                        } else {
-                            progressIndicator = `${Math.round(percent)}%`;
-                        }
+                    const progressCallbackForFile = (percent, total, received) => {
+                        const progressIndicator = (percent === -1) ? formatFileSize(received) : `${Math.round(percent)}%`;
                         downloadAllProgressTextEl.textContent = `${overallProgressText} (${progressIndicator})...`;
                     };
-
                     try {
-                        const fileUrl = `${archiveDownloadUrlBase}/${encodeURIComponent(track.path)}`;
-                        const buffer = await fetchWithTimeoutAndRetry({url: fileUrl, externalSignal: multiDownloadAbortController.signal, progressCallback: progressCallbackForFile});
-                        zip.file(track.displayName, buffer);
-                    } catch (error) {
-                         if (error.name !== 'AbortError') {
-                            console.error(`Failed to download ${track.displayName}:`, error);
-                            failedFiles.push(track.displayName);
-                         } else {
-                             throw error;
-                         }
-                    }
+                        const buffer = await fetchWithTimeoutAndRetry({url: `${archiveDownloadUrlBase}/${encodeURIComponent(item.path)}`, externalSignal: multiDownloadAbortController.signal, progressCallback: progressCallbackForFile});
+                        zip.file(item.displayName, buffer);
+                    } catch (error) { if (error.name !== 'AbortError') { console.error(`Failed to download ${item.displayName}:`, error); failedFiles.push(item.displayName); } else { throw error; }}
                 }
-
                 if (multiDownloadAbortController.signal.aborted) throw new Error("Download cancelled by user.");
-
                 downloadAllProgressTextEl.textContent = 'Zipping files...';
-                const zipBlob = await zip.generateAsync({
-                    type: "blob",
-                    compression: "DEFLATE",
-                    compressionOptions: { level: 1 }
-                }, (metadata) => {
+                const zipBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 1 } }, (metadata) => {
                     downloadAllProgressTextEl.textContent = `Zipping: ${Math.round(metadata.percent)}%`;
                 });
-                
                 if (multiDownloadAbortController.signal.aborted) throw new Error("Download cancelled during zipping.");
-
                 let zipFileName = "archive.zip";
-                const isSearchMode = searchBox.value.trim() !== '' && searchContainer.classList.contains('active');
-                if (isSearchMode) {
-                    zipFileName = "search-results.zip";
-                } else if (currentDirectory) {
-                    const folderName = currentDirectory.split('/').filter(p => p).pop();
-                    if(folderName) zipFileName = `${folderName}.zip`;
-                }
-
+                if (searchBox.value.trim() !== '' && searchContainer.classList.contains('active')) zipFileName = "search-results.zip";
+                else if (currentDirectory) zipFileName = `${currentDirectory.split('/').filter(p=>p).pop() || 'archive'}.zip`;
                 const link = document.createElement('a');
-                link.href = URL.createObjectURL(zipBlob);
-                link.download = zipFileName;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                link.href = URL.createObjectURL(zipBlob); link.download = zipFileName;
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
                 URL.revokeObjectURL(link.href);
-
-                if (failedFiles.length > 0) {
-                    alert(`Download complete, but some files failed:\n- ${failedFiles.join('\n- ')}`);
-                }
-
+                if (failedFiles.length > 0) alert(`Download complete, but some files failed:\n- ${failedFiles.join('\n- ')}`);
             } catch (error) {
-                if (error.name === 'AbortError' || error.message.includes("cancelled")) {
-                    alert("Download cancelled.");
-                } else {
-                    alert(`An error occurred during the download process: ${error.message}`);
-                    console.error("Multi-download failed:", error);
-                }
+                if (error.name === 'AbortError' || error.message.includes("cancelled")) alert("Download cancelled.");
+                else { alert(`An error occurred during the download process: ${error.message}`); console.error("Multi-download failed:", error); }
             } finally {
-                console.log("Multi-download process finished or was cancelled. Cleaning up memory.");
-                downloadAllBtn.classList.remove('loading');
-                updateDownloadAllButtonState();
-                multiDownloadAbortController = null;
-                zip = null;
+                downloadAllBtn.classList.remove('loading'); updateDownloadAllButtonState();
+                multiDownloadAbortController = null; zip = null;
             }
+        }
+        
+        // --- Image Viewer Functions ---
+        function openImageViewer(item) {
+            if (!item || !item.isImage) return;
+            const imageUrl = `${archiveDownloadUrlBase}/${encodeURIComponent(item.path)}`;
+            imageViewerImg.src = imageUrl;
+            imageViewerCaption.textContent = item.displayName;
+            imageViewerDownload.href = imageUrl;
+            imageViewerDownload.download = item.displayName;
+            imageViewerModal.style.display = 'block';
+        }
+        function closeImageViewer() {
+            imageViewerModal.style.display = 'none';
+            imageViewerImg.src = '';
+            imageViewerCaption.textContent = '';
         }
 
         function setupEventListeners() {
@@ -2269,6 +1937,7 @@
             
             document.addEventListener('keydown', (e) => {
                 const activeEl = document.activeElement; const isInputFocused = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+                if (imageViewerModal.style.display === 'block' && e.key === 'Escape') { closeImageViewer(); return; }
                 if (isLyricsViewActive && e.key === 'Escape') { e.preventDefault(); toggleLyricsView(); return; }
                 if (e.key === '/' && !isInputFocused) { e.preventDefault(); toggleSearch(true); }
                 else if (e.key === 'Escape' && searchContainer.classList.contains('active')) { e.preventDefault(); toggleSearch(false); if (!searchBox.value) updateDirectoryView(currentDirectory); }
@@ -2280,14 +1949,12 @@
             playPauseBtn.addEventListener('click', togglePlayback); prevBtn.addEventListener('click', playPrev); nextBtn.addEventListener('click', playNext); downloadBtn.addEventListener('click', triggerDownload);
             
             jumpToFolderBtn.addEventListener('click', () => {
-                if (!currentPlayingFile || !currentPlayingFile.path) return;
-                const pathParts = currentPlayingFile.path.split('/').filter(p => p);
-                pathParts.pop();
+                if (!currentPlayingFile?.path) return;
+                const pathParts = currentPlayingFile.path.split('/').filter(p => p); pathParts.pop();
                 const folderPath = pathParts.join('/') + (pathParts.length > 0 ? '/' : '');
-                
                 if (searchContainer.classList.contains('active')) { toggleSearch(false); searchBox.value = ''; }
                 if (isLyricsViewActive) toggleLyricsView();
-                if (currentMainView !== VIEW_MODE_FOLDER) { setMainViewMode(VIEW_MODE_FOLDER); }
+                if (currentMainView !== VIEW_MODE_FOLDER) setMainViewMode(VIEW_MODE_FOLDER);
                 updateDirectoryView(folderPath);
             });
 
@@ -2297,8 +1964,7 @@
                 const rect = progressWrapper.getBoundingClientRect();
                 const clickX = e.clientX - rect.left;
                 const ratio = Math.max(0, Math.min(1, clickX / rect.width));
-                const seekTime = ratio * currentAudioBuffer.duration;
-                seekTo(seekTime);
+                seekTo(ratio * currentAudioBuffer.duration);
             });
             volumeSlider.addEventListener('input', () => { currentVolume = parseFloat(volumeSlider.value); if (gainNode && audioContext) gainNode.gain.setTargetAtTime(currentVolume, audioContext.currentTime, 0.015); updateVolumeIcon(currentVolume); });
             volumeSlider.addEventListener('change', () => saveSetting('playerVolume', currentVolume));
@@ -2312,93 +1978,61 @@
             sortYearBtn.addEventListener('click', () => setSortMode('year'));
             
             fileBrowserContainerEl.addEventListener('click', (event) => {
-                const downloadButton = event.target.closest('.track-download-btn');
-                if (downloadButton) {
+                const itemEl = event.target.closest('.file-item-grid, .file-item-list');
+                if (!itemEl) return;
+                
+                const filePath = itemEl.dataset.path;
+                const itemData = currentDirectoryItems.find(i => i.path === filePath);
+                if (!itemData) return;
+
+                if (event.target.closest('.track-download-btn')) {
                     event.stopPropagation();
-                    const filePath = downloadButton.dataset.path;
-                    const listItem = downloadButton.closest('.file-item-list, .file-item-grid');
-                    const nameElement = listItem?.querySelector('.file-name-list, .file-name-grid');
-                    const displayName = nameElement?.textContent || filePath?.split('/').pop();
-                    if (filePath) {
-                        downloadSpecificTrack(filePath, downloadButton, displayName, false);
-                    } else {
-                        console.error("No file path found for download button.");
-                    }
-                    return;
-                }
-            
-                const itemJumpButton = event.target.closest('.item-jump-to-folder-btn');
-                if (itemJumpButton) {
+                    const downloadButton = event.target.closest('.track-download-btn');
+                    downloadSpecificTrack(filePath, downloadButton, itemData.displayName, false);
+                } else if (event.target.closest('.item-jump-to-folder-btn')) {
                     event.stopPropagation();
-                    const filePath = itemJumpButton.dataset.path;
-                    if (!filePath) {
-                        console.error("No file path found for jump-to-folder button.");
-                        return;
-                    }
-            
-                    const pathParts = filePath.split('/').filter(p => p);
-                    pathParts.pop();
+                    const pathParts = filePath.split('/').filter(p => p); pathParts.pop();
                     const folderPath = pathParts.join('/') + (pathParts.length > 0 ? '/' : '');
-                    
-                    toggleSearch(false); 
-                    searchBox.value = ''; 
-                    
+                    toggleSearch(false); searchBox.value = ''; 
                     if (isLyricsViewActive) toggleLyricsView();
-                    
-                    if (currentMainView !== VIEW_MODE_FOLDER) { 
-                        setMainViewMode(VIEW_MODE_FOLDER); 
-                        currentDirectory = folderPath;
-                    } else {
-                        updateDirectoryView(folderPath);
-                    }
+                    if (currentMainView !== VIEW_MODE_FOLDER) { setMainViewMode(VIEW_MODE_FOLDER); currentDirectory = folderPath; } 
+                    else updateDirectoryView(folderPath);
+                } else if (itemData.isDirectory) {
+                    updateDirectoryView(itemData.path);
+                } else if (itemData.isAudio) {
+                    playAudioFile(itemData, currentTracklist);
+                } else if (itemData.isImage) {
+                    openImageViewer(itemData);
                 }
             });
 
             closeHintBtn.addEventListener('click', dismissSearchHint);
-            
-            // Lyrics listeners
             lyricsBtn.addEventListener('click', toggleLyricsView);
             lyricsViewCloseBtn.addEventListener('click', toggleLyricsView);
             lyricsContainer.addEventListener('click', (event) => {
-                if (!currentLyrics?.synced) return; // Only for synced lyrics
+                if (!currentLyrics?.synced) return;
                 const lineEl = event.target.closest('.lyrics-line[data-time]');
-                if (lineEl) {
-                    const time = parseFloat(lineEl.dataset.time);
-                    if (!isNaN(time)) {
-                        seekTo(time);
-                    }
-                }
+                if (lineEl) { const time = parseFloat(lineEl.dataset.time); if (!isNaN(time)) seekTo(time); }
             });
 
-            // Multi-download listeners
             downloadAllBtn.addEventListener('click', triggerMultiDownload);
-            downloadAllCancelBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // prevent the main button click from firing
-                if (multiDownloadAbortController) {
-                    multiDownloadAbortController.abort();
-                }
-            });
+            downloadAllCancelBtn.addEventListener('click', (e) => { e.stopPropagation(); if (multiDownloadAbortController) multiDownloadAbortController.abort(); });
+            
+            imageViewerClose.addEventListener('click', closeImageViewer);
+            imageViewerModal.addEventListener('click', (e) => { if(e.target === imageViewerModal) closeImageViewer(); });
 
             window.addEventListener('popstate', (event) => {
                 isNavigatingViaPopState = true;
                 if (isLyricsViewActive) toggleLyricsView();
                 if (searchContainer.classList.contains('active')) { toggleSearch(false); searchBox.value = ''; }
                 if (event.state && event.state.path !== undefined) {
-                    if (currentMainView !== VIEW_MODE_FOLDER) {
-                        currentDirectory = event.state.path;
-                        setMainViewMode(VIEW_MODE_FOLDER);
-                    } else {
-                         updateDirectoryView(event.state.path);
-                    }
-                } else {
-                    updateDirectoryView('');
-                }
+                    if (currentMainView !== VIEW_MODE_FOLDER) { currentDirectory = event.state.path; setMainViewMode(VIEW_MODE_FOLDER); } 
+                    else { updateDirectoryView(event.state.path); }
+                } else { updateDirectoryView(''); }
                 isNavigatingViaPopState = false;
             });
 
-            window.addEventListener('resize', () => {
-                if(!isLyricsViewActive) applyPlayerState();
-            });
+            window.addEventListener('resize', () => { if(!isLyricsViewActive) applyPlayerState(); });
         }
     </script>
 </body>
