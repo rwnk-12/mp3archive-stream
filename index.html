@@ -209,7 +209,7 @@
 
         /*
         ========================================
-        --- IMPROVED List View ---
+        --- IMPROVED List View (Standard & Enhanced) ---
         ========================================
         */
          .file-browser-list { display: flex; flex-direction: column; gap: 2px; }
@@ -228,9 +228,29 @@
          .file-size-list { font-size: 0.8rem; color: var(--text-secondary); min-width: 55px; text-align: right; flex-shrink: 0; }
          .file-item-count { font-size: 0.8rem; color: var(--text-secondary); margin-left: auto; flex-shrink: 0; padding-left: 15px; }
          .file-item-list .track-download-btn { margin-left: 5px; }
-         /* IMPROVED playing track style */
          .file-item-list.playing-track { background-color: var(--highlight-color); border-left-color: var(--accent-color); }
          .file-item-list.playing-track .file-name-list { color: var(--accent-color); font-weight: 600;}
+
+        /* --- NEW: Enhanced List View Specifics --- */
+        .file-browser-list.enhanced-view .file-item-list { gap: 15px; }
+        .file-item-list-header { display: flex; align-items: center; padding: 5px 12px; margin-bottom: 4px; font-size: 0.75rem; color: var(--text-secondary); border-bottom: 1px solid var(--border-color); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; gap: 15px; }
+        .file-browser-list.enhanced-view .file-title-list,
+        .file-browser-list.enhanced-view .file-artist-list,
+        .file-browser-list.enhanced-view .file-name-full-list { font-size: 0.95rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; cursor: pointer; }
+        .file-browser-list.enhanced-view .is-audio:hover .file-title-list,
+        .file-browser-list.enhanced-view .is-folder:hover .file-name-full-list { color: var(--text-primary); }
+        .file-browser-list.enhanced-view .file-artist-list { color: var(--text-secondary); cursor: default; }
+        .file-browser-list.enhanced-view .playing-track .file-title-list { color: var(--accent-color); font-weight: 600; }
+        .file-browser-list.enhanced-view .playing-track .file-artist-list { color: var(--accent-hover); }
+        .enhanced-view .file-name-list { display: none; } /* Hide original name element */
+        
+        /* Column sizing for Enhanced View */
+        .file-icon-list-header, .enhanced-view .file-icon-list { flex: 0 0 20px; }
+        .file-title-list-header, .enhanced-view .file-title-list { flex: 1 1 50%; min-width: 150px; }
+        .file-artist-list-header, .enhanced-view .file-artist-list { flex: 1 1 30%; min-width: 120px; }
+        .file-name-full-list { flex: 1 1 80%; /* Takes up both title and artist space */ }
+        .file-info-list-header, .enhanced-view .file-info-list { flex: 0 0 auto; min-width: 100px; }
+        .file-actions-list, .enhanced-view .file-info-list .track-download-btn, .enhanced-view .file-info-list .item-jump-to-folder-btn { width: 28px; }
 
 
         /* --- Player Section (Base Desktop Layout) --- */
@@ -910,7 +930,21 @@
             }
             return [files, newCoverMap];
         }
+        
+        // NEW: Helper function to parse "Artist - Title.mp3" format
+        function parseFileName(filename) {
+            const mp3Regex = /^(.*?)\s+-\s+(.*?)\s*\.mp3$/i;
+            const match = filename.match(mp3Regex);
+            if (match && match[1] && match[2]) {
+                // Successfully parsed "Artist - Title"
+                return { artist: match[1].trim(), title: match[2].trim() };
+            }
+            // Fallback: Use the whole filename (without extension) as the title
+            const title = filename.replace(/\.mp3$/i, '').trim();
+            return { artist: null, title: title };
+        }
 
+        // MODIFIED: processRawFiles now uses parseFileName as a fallback
         function processRawFiles(rawFiles) {
              const yearRegex = /\((\d{4})\)$/;
              return rawFiles.map(file => {
@@ -926,21 +960,32 @@
                           }
                       }
                  }
+                 const isAudio = !isDirectory && path.toLowerCase().endsWith('.mp3');
                  const isImage = !isDirectory && path.toLowerCase().match(/\.(jpe?g|png|webp|gif)$/i);
                  let durationSeconds = file.length && !isNaN(parseFloat(file.length)) ? parseFloat(file.length) : undefined;
+                 
+                 // Get metadata from API
                  let apiArtist = (file.creator || file.artist || '').split(';')[0].trim() || null;
                  let apiAlbum = (file.album || '').split('g;')[0].trim() || null;
                  let apiTitle = file.title || null;
                  
+                 // NEW: Parse filename for fallback title/artist
+                 let parsedData = { title: displayName.replace(/\.mp3$/i, ''), artist: null };
+                 if (isAudio) {
+                     parsedData = parseFileName(displayName);
+                 }
+                 
                  return {
                      name: file.name, path: path, size: file.size ? parseInt(file.size) : 0, format: file.format || '',
-                     isDirectory, isAudio: !isDirectory && path.toLowerCase().endsWith('.mp3'),
-                     isImage, displayName, duration: durationSeconds, year,
-                     artist: apiArtist, album: apiAlbum, title: apiTitle, metadata: null,
-                     coverArt: null
+                     isDirectory, isAudio, isImage, displayName, duration: durationSeconds, year,
+                     // Prioritize API metadata, then parsed filename, then display name
+                     title: apiTitle || parsedData.title,
+                     artist: apiArtist || parsedData.artist,
+                     album: apiAlbum,
+                     metadata: null, coverArt: null
                  };
              }).filter(file => file.isDirectory || file.isAudio || file.isImage);
-         }
+        }
 
         function showInitialLoading() { populateSkeletonLoaders(); showSkeletonLoader(true); statusMessageEl.innerHTML = `<span class="loader"></span>Loading archive... Please wait.`; statusMessageEl.classList.add('visible'); fileBrowserContainerEl.innerHTML = ''; if (itemCountDisplayEl) itemCountDisplayEl.style.display = 'none'; }
         function hideInitialLoading() { hideSkeletonLoader(); if (statusMessageEl.textContent.includes("Loading archive")) { statusMessageEl.classList.remove('visible'); statusMessageEl.innerHTML = ''; } }
@@ -1036,7 +1081,10 @@
                     if (yearA && !yearB) return -1;
                     if (!yearA && yearB) return 1;
                 }
-                return (a.displayName || '').localeCompare(b.displayName || '', undefined, { numeric: true, sensitivity: 'base' });
+                // Use .title for sorting audio, otherwise displayName
+                const nameA = a.isAudio ? a.title : a.displayName;
+                const nameB = b.isAudio ? b.title : b.displayName;
+                return (nameA || '').localeCompare(nameB || '', undefined, { numeric: true, sensitivity: 'base' });
             });
         }
 
@@ -1207,19 +1255,43 @@
                 artworkContainer.innerHTML = artworkHTML;
                 
                 let jumpButtonHTML = isSearchMode ? `<button class="item-jump-to-folder-btn" title="Go to folder" data-path="${item.path}"><i class="fas fa-folder-open"></i></button>` : '';
+                
+                // Use item.title which is now populated from API or parsing
+                const displayName = item.title || item.displayName;
 
                 const infoContainer = document.createElement('div');
                 infoContainer.className = 'grid-item-info';
-                infoContainer.innerHTML = `<div class="file-name-grid" title="${item.displayName || item.path}">${item.displayName || '[No Name]'}</div><div class="file-info-grid"><span>${infoText}</span>${jumpButtonHTML}</div>`;
+                infoContainer.innerHTML = `<div class="file-name-grid" title="${displayName || item.path}">${displayName || '[No Name]'}</div><div class="file-info-grid"><span>${infoText}</span>${jumpButtonHTML}</div>`;
                 
                 itemEl.appendChild(artworkContainer);
                 itemEl.appendChild(infoContainer);
                 fileBrowserContainerEl.appendChild(itemEl);
             });
         }
-
+        
+        // MODIFIED: renderFileBrowserList now handles both standard and enhanced views
         function renderFileBrowserList(items) { 
             const isSearchMode = searchBox.value.trim() !== '' && searchContainer.classList.contains('active');
+            const isEnhancedView = !isSearchMode && currentDirectory !== '' && items.some(item => item.isAudio);
+
+            fileBrowserContainerEl.classList.toggle('enhanced-view', isEnhancedView);
+
+            if (isEnhancedView) {
+                const header = document.createElement('div');
+                header.className = 'file-item-list-header';
+                header.innerHTML = `
+                    <span class="file-icon-list"></span>
+                    <span class="file-title-list">Title</span>
+                    <span class="file-artist-list">Artist</span>
+                    <div class="file-info-list">
+                        <span class="file-duration-list">Duration</span>
+                        <span class="file-size-list">Size</span>
+                        <span class="file-actions-list" style="width: 28px;"></span>
+                    </div>
+                `;
+                fileBrowserContainerEl.appendChild(header);
+            }
+
             items.forEach(item => { 
                 const itemEl = document.createElement('div'); 
                 const isInteractive = item.isDirectory || item.isAudio || item.isImage;
@@ -1229,33 +1301,46 @@
                 if (item.isImage) itemEl.classList.add('is-image');
                 itemEl.dataset.path = item.path; 
                 
-                const icon = document.createElement('div'); icon.className = 'file-icon-list'; 
-                const nameEl = document.createElement('div'); nameEl.className = 'file-name-list'; nameEl.textContent = item.title || item.displayName || '[No Name]'; nameEl.title = item.displayName || item.path; 
-                const infoEl = document.createElement('div'); infoEl.className = 'file-info-list'; 
-                const durationEl = document.createElement('span'); durationEl.className = 'file-duration-list'; 
-                const sizeEl = document.createElement('span'); sizeEl.className = 'file-size-list'; 
+                const iconClass = item.isDirectory ? 'folder' : (item.isImage ? 'image' : '');
+                const iconFA = item.isDirectory ? 'fa-folder' : (item.isImage ? 'fa-image' : 'fa-music');
+                const iconHTML = `<div class="file-icon-list ${iconClass}"><i class="fas ${iconFA}"></i></div>`;
                 
-                if (item.isDirectory) { 
-                    icon.innerHTML = '<i class="fas fa-folder"></i>'; icon.classList.add('folder'); 
-                    sizeEl.textContent = item.year || 'Folder'; 
-                } else if (item.isAudio) { 
-                    icon.innerHTML = '<i class="fas fa-music"></i>'; 
-                    durationEl.textContent = item.duration ? formatTime(item.duration) : '--:--'; 
-                    durationEl.dataset.path = item.path; 
-                    sizeEl.textContent = formatFileSize(item.size); 
-                    if (isSearchMode) infoEl.insertAdjacentHTML('beforeend', `<button class="item-jump-to-folder-btn" title="Go to folder" data-path="${item.path}"><i class="fas fa-folder-open"></i></button>`);
-                    infoEl.insertAdjacentHTML('beforeend', createTrackDownloadButtonHTML(item.path, item.displayName));
-                } else if (item.isImage) {
-                    icon.innerHTML = '<i class="fas fa-image"></i>'; icon.classList.add('image');
-                    sizeEl.textContent = formatFileSize(item.size);
-                } else { 
-                    icon.innerHTML = '<i class="fas fa-file"></i>'; 
-                    sizeEl.textContent = formatFileSize(item.size); 
-                } 
+                let nameColumnsHTML = '';
+                let infoColumnsHTML = '';
+
+                if (isEnhancedView) {
+                    // --- ENHANCED VIEW LOGIC (for MP3 folders) ---
+                    if (item.isAudio) {
+                        nameColumnsHTML = `
+                            <div class="file-title-list" title="${item.title}">${item.title || '[No Title]'}</div>
+                            <div class="file-artist-list" title="${item.artist || ''}">${item.artist || '—'}</div>
+                        `;
+                    } else { // For folders or images within an enhanced view
+                        nameColumnsHTML = `<div class="file-name-full-list" title="${item.displayName}">${item.displayName}</div>`;
+                    }
+                    
+                    const durationHTML = item.duration ? `<span class="file-duration-list">${formatTime(item.duration)}</span>` : `<span class="file-duration-list"></span>`;
+                    const sizeText = item.isDirectory ? (item.year || 'Folder') : formatFileSize(item.size);
+                    const sizeHTML = `<span class="file-size-list">${sizeText}</span>`;
+                    const downloadHTML = item.isAudio ? createTrackDownloadButtonHTML(item.path, item.displayName) : `<span style="width: 28px;"></span>`;
+
+                    infoColumnsHTML = `<div class="file-info-list">${durationHTML}${sizeHTML}${downloadHTML}</div>`;
+
+                } else {
+                    // --- STANDARD VIEW LOGIC (for root or non-MP3 folders) ---
+                    const displayName = item.title || item.displayName;
+                    nameColumnsHTML = `<div class="file-name-list" title="${displayName || item.path}">${displayName || '[No Name]'}</div>`;
+                    
+                    const durationHTML = item.isAudio ? `<span class="file-duration-list" data-path="${item.path}">${item.duration ? formatTime(item.duration) : '--:--'}</span>` : '';
+                    const sizeText = item.isDirectory ? (item.year || 'Folder') : formatFileSize(item.size);
+                    const sizeHTML = `<span class="file-size-list">${sizeText}</span>`;
+                    const jumpHTML = isSearchMode && item.isAudio ? `<button class="item-jump-to-folder-btn" title="Go to folder" data-path="${item.path}"><i class="fas fa-folder-open"></i></button>` : '';
+                    const downloadHTML = item.isAudio ? createTrackDownloadButtonHTML(item.path, item.displayName) : '';
+                    
+                    infoColumnsHTML = `<div class="file-info-list">${durationHTML}${sizeHTML}${jumpHTML}${downloadHTML}</div>`;
+                }
                 
-                itemEl.appendChild(icon); itemEl.appendChild(nameEl); 
-                infoEl.insertBefore(durationEl, infoEl.firstChild); infoEl.insertBefore(sizeEl, durationEl.nextSibling); 
-                itemEl.appendChild(infoEl); 
+                itemEl.innerHTML = iconHTML + nameColumnsHTML + infoColumnsHTML;
                 fileBrowserContainerEl.appendChild(itemEl); 
             }); 
         }
@@ -1464,11 +1549,15 @@
                 
                 const tagsMetadata = await getMetadataFromTags(file, arrayBuffer);
                 if (!currentPlayingFile || file.path !== currentPlayingFile.path) { cleanupPlaybackResources(); return; }
-                currentPlayingFile.metadata = tagsMetadata; currentPlayingFile.title = tagsMetadata?.title || currentPlayingFile.title; currentPlayingFile.artist = tagsMetadata?.artist || currentPlayingFile.artist; currentPlayingFile.album = tagsMetadata?.album || currentPlayingFile.album;
+                // Prioritize fresh tags, but keep existing file data as fallback
+                currentPlayingFile.metadata = tagsMetadata; 
+                currentPlayingFile.title = tagsMetadata?.title || currentPlayingFile.title; 
+                currentPlayingFile.artist = tagsMetadata?.artist || currentPlayingFile.artist;
+                currentPlayingFile.album = tagsMetadata?.album || currentPlayingFile.album;
                 
-                manageCache(file.path, { buffer: currentAudioBuffer, metadata: tagsMetadata });
+                manageCache(file.path, { buffer: currentAudioBuffer, metadata: currentPlayingFile.metadata });
                 
-                displayMetadataInPlayer(tagsMetadata);
+                displayMetadataInPlayer(currentPlayingFile.metadata);
                 fetchAndRenderLyrics(currentPlayingFile);
                 
                 startPlayback(0);
@@ -1705,7 +1794,7 @@
                     const briefMessage = loadingMessage.includes('...') ? loadingMessage.split('...')[0] : loadingMessage;
                     miniTitleEl.textContent = briefMessage;
                 } else if (hasActiveTrack) {
-                    miniTitleEl.textContent = currentPlayingFile.metadata?.title || currentPlayingFile.title || currentPlayingFile.displayName || "Now Playing";
+                    miniTitleEl.textContent = currentPlayingFile.title || currentPlayingFile.displayName || "Now Playing";
                     miniTitleEl.title = miniTitleEl.textContent;
                 } else {
                     miniTitleEl.innerHTML = '<i class="fas fa-headphones-alt" style="margin-right: 5px; font-size: 0.9em;"></i> Player';
@@ -1728,8 +1817,8 @@
                 if (playPauseIcon) playPauseIcon.className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
                 durationEl.textContent = formatTime(currentAudioBuffer.duration);
                 if (nowPlayingArtistAlbumEl.textContent.includes('...')) {
-                    const artist = currentPlayingFile?.metadata?.artist || currentPlayingFile?.artist || UNKNOWN_ARTIST;
-                    const album = currentPlayingFile?.metadata?.album || currentPlayingFile?.album || UNKNOWN_ALBUM;
+                    const artist = currentPlayingFile?.artist || UNKNOWN_ARTIST;
+                    const album = currentPlayingFile?.album || UNKNOWN_ALBUM;
                     let artistAlbumText = artist === UNKNOWN_ARTIST ? album : (album === UNKNOWN_ALBUM ? artist : `${artist} • ${album}`);
                     if (artist === UNKNOWN_ARTIST && album === UNKNOWN_ALBUM) artistAlbumText = 'Unknown Artist / Album';
                     nowPlayingArtistAlbumEl.textContent = artistAlbumText;
@@ -1758,7 +1847,7 @@
                 playerSection.classList.add('minimized'); bodyEl.classList.add('player-minimized');
                 if (toggleIconEl) toggleIconEl.className = 'fas fa-angle-double-down';
                 playerToggleBtn.title = "Shrink Further";
-                if (miniTitleEl) miniTitleEl.textContent = (currentPlayingFile ? (currentPlayingFile.metadata?.title || currentPlayingFile.title || currentPlayingFile.displayName || "Now Playing") : "Player");
+                if (miniTitleEl) miniTitleEl.textContent = (currentPlayingFile ? (currentPlayingFile.title || currentPlayingFile.displayName || "Now Playing") : "Player");
             } else if (playerState === 'super-minimized') {
                 playerSection.classList.add('super-minimized'); bodyEl.classList.add('player-super-minimized');
                 if (toggleIconEl) toggleIconEl.className = 'fas fa-angle-up';
@@ -1786,7 +1875,7 @@
             lyricsContainer.className = 'lyrics-container';
             lastActiveLyricIndex = -1;
             
-            const title = file.metadata?.title || file.title || file.displayName;
+            const title = file.metadata?.title || file.title;
             const artist = file.metadata?.artist || file.artist;
             const album = file.metadata?.album || file.album;
 
