@@ -160,12 +160,11 @@
         .track-download-btn .progress-background { stroke: var(--download-progress-bg); }
         .track-download-btn .progress-bar-circle { stroke: var(--download-progress-fill); stroke-linecap: round; transition: stroke-dashoffset 0.1s linear; }
         .track-download-btn .download-progress-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.55rem; font-weight: bold; color: var(--text-primary); display: none; line-height: 1; }
-        /* CORRECTED: Ensure loader stays inside container */
         .track-download-btn .btn-loader { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 16px; height: 16px; border-width: 2px; border-color: rgba(255, 255, 255, 0.3); border-top-color: var(--text-primary); animation: spin 0.8s linear infinite; }
         .track-download-btn.loading .btn-icon { opacity: 0.1; }
         .track-download-btn.loading .circular-progress,
         .track-download-btn.loading .download-progress-text { display: block; }
-        .track-download-btn.loading .btn-loader { display: none; } /* Replaced by circular progress */
+        .track-download-btn.loading .btn-loader { display: none; }
         
         /* --- Item-specific Jump to Folder Button (Search only) --- */
         .item-jump-to-folder-btn { background: none; border: none; color: var(--icon-color-default); cursor: pointer; line-height: 1; flex-shrink: 0; position: relative; transition: background-color 0.2s, color 0.2s; }
@@ -176,7 +175,7 @@
 
         /*
         ========================================
-        --- NEW: Redesigned Grid View ---
+        --- Redesigned Grid View ---
         ========================================
         */
         .file-browser-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 24px; }
@@ -199,7 +198,20 @@
         .play-overlay:hover { background-color: var(--accent-hover); transform: scale(1.1) !important; }
         
         .grid-item-info { padding: 0 4px; text-align: left; }
-        .file-name-grid { font-size: 0.9rem; font-weight: 600; white-space: normal; overflow-wrap: break-word; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; margin-bottom: 4px; }
+        /* MODIFIED: For expandable name */
+        .file-name-grid { 
+            font-size: 0.9rem; font-weight: 600; line-height: 1.3;
+            overflow: hidden; 
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; 
+            max-height: 2.6em; /* 2 * 1.3em */
+            transition: max-height 0.3s ease-in-out;
+            margin-bottom: 4px; cursor: pointer;
+        }
+        .file-name-grid.expanded {
+            -webkit-line-clamp: unset;
+            max-height: 10em; /* Sufficiently large height */
+        }
+        
         .file-info-grid { font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 
         .file-item-grid.playing-track { background-color: var(--list-item-hover); }
@@ -238,7 +250,8 @@
         .file-browser-list.enhanced-view .file-artist-list,
         .file-browser-list.enhanced-view .file-name-full-list { font-size: 0.95rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; cursor: pointer; }
         .file-browser-list.enhanced-view .is-audio:hover .file-title-list,
-        .file-browser-list.enhanced-view .is-folder:hover .file-name-full-list { color: var(--text-primary); }
+        .file-browser-list.enhanced-view .is-folder:hover .file-name-full-list,
+        .file-browser-list.enhanced-view .is-image:hover .file-name-full-list { color: var(--text-primary); }
         .file-browser-list.enhanced-view .file-artist-list { color: var(--text-secondary); cursor: default; }
         .file-browser-list.enhanced-view .playing-track .file-title-list { color: var(--accent-color); font-weight: 600; }
         .file-browser-list.enhanced-view .playing-track .file-artist-list { color: var(--accent-hover); }
@@ -249,7 +262,7 @@
         .file-title-list-header, .enhanced-view .file-title-list { flex: 1 1 50%; min-width: 150px; }
         .file-artist-list-header, .enhanced-view .file-artist-list { flex: 1 1 30%; min-width: 120px; }
         .file-name-full-list { flex: 1 1 80%; /* Takes up both title and artist space */ }
-        .file-info-list-header, .enhanced-view .file-info-list { flex: 0 0 auto; min-width: 100px; }
+        .file-info-list-header, .enhanced-view .file-info-list { flex: 0 0 auto; min-width: 125px; /* Added space for jump button */ justify-content: flex-end;}
         .file-actions-list, .enhanced-view .file-info-list .track-download-btn, .enhanced-view .file-info-list .item-jump-to-folder-btn { width: 28px; }
 
 
@@ -931,7 +944,6 @@
             return [files, newCoverMap];
         }
         
-        // NEW: Helper function to parse "Artist - Title.mp3" format
         function parseFileName(filename) {
             const mp3Regex = /^(.*?)\s+-\s+(.*?)\s*\.mp3$/i;
             const match = filename.match(mp3Regex);
@@ -944,7 +956,6 @@
             return { artist: null, title: title };
         }
 
-        // MODIFIED: processRawFiles now uses parseFileName as a fallback
         function processRawFiles(rawFiles) {
              const yearRegex = /\((\d{4})\)$/;
              return rawFiles.map(file => {
@@ -964,12 +975,10 @@
                  const isImage = !isDirectory && path.toLowerCase().match(/\.(jpe?g|png|webp|gif)$/i);
                  let durationSeconds = file.length && !isNaN(parseFloat(file.length)) ? parseFloat(file.length) : undefined;
                  
-                 // Get metadata from API
                  let apiArtist = (file.creator || file.artist || '').split(';')[0].trim() || null;
                  let apiAlbum = (file.album || '').split('g;')[0].trim() || null;
                  let apiTitle = file.title || null;
                  
-                 // NEW: Parse filename for fallback title/artist
                  let parsedData = { title: displayName.replace(/\.mp3$/i, ''), artist: null };
                  if (isAudio) {
                      parsedData = parseFileName(displayName);
@@ -978,7 +987,6 @@
                  return {
                      name: file.name, path: path, size: file.size ? parseInt(file.size) : 0, format: file.format || '',
                      isDirectory, isAudio, isImage, displayName, duration: durationSeconds, year,
-                     // Prioritize API metadata, then parsed filename, then display name
                      title: apiTitle || parsedData.title,
                      artist: apiArtist || parsedData.artist,
                      album: apiAlbum,
@@ -1014,8 +1022,8 @@
             let text = "";
             const isSearchActive = searchBox.value.trim() !== '' && searchContainer.classList.contains('active');
             if (isSearchActive) {
-                const numFiles = items.filter(item => !item.isDirectory).length;
-                text = (numFiles > 0) ? `${numFiles} result${numFiles > 1 ? 's' : ''} found` : "No results found";
+                const numResults = items.length;
+                text = (numResults > 0) ? `${numResults} result${numResults > 1 ? 's' : ''} found` : "No results found";
             } else {
                 const numFolders = items.filter(item => item.isDirectory).length;
                 const numFiles = items.filter(item => !item.isDirectory).length;
@@ -1025,16 +1033,14 @@
                 else if (count === 0) text = (currentDirectory) ? "Empty folder" : "Archive empty";
             }
             itemCountDisplayEl.textContent = text;
-            if (currentMainView === VIEW_MODE_FOLDER) { itemCountDisplayEl.style.display = text ? 'inline' : 'none'; }
+            if (currentMainView === VIEW_MODE_FOLDER || isSearchActive) { itemCountDisplayEl.style.display = text ? 'inline' : 'none'; }
         }
 
         function updateMainViewToggleButtons() { folderViewBtn.classList.toggle('active', currentMainView === VIEW_MODE_FOLDER); }
         
-        // --- NEW/REVISED: View and Sort Logic ---
         function setLayoutMode(mode) { 
             if (mode === currentLayoutMode) return; 
             currentLayoutMode = mode; 
-            // Save an override for the current subfolder for this session
             if (currentDirectory !== '') {
                 sessionStorage.setItem('viewOverride-' + currentDirectory, mode);
             }
@@ -1081,7 +1087,6 @@
                     if (yearA && !yearB) return -1;
                     if (!yearA && yearB) return 1;
                 }
-                // Use .title for sorting audio, otherwise displayName
                 const nameA = a.isAudio ? a.title : a.displayName;
                 const nameB = b.isAudio ? b.title : b.displayName;
                 return (nameA || '').localeCompare(nameB || '', undefined, { numeric: true, sensitivity: 'base' });
@@ -1095,23 +1100,22 @@
             const oldPath = currentDirectory;
             currentDirectory = path;
             
-            // --- NEW: Context-aware view logic ---
             const isRoot = path === '';
             let items = getItemsInDirectory(allArchiveFiles, currentDirectory);
 
             if (isRoot) {
-                currentLayoutMode = 'list'; // Root is always list view
+                currentLayoutMode = 'list';
             } else {
                 const sessionOverride = sessionStorage.getItem('viewOverride-' + path);
                 if (sessionOverride) {
-                    currentLayoutMode = sessionOverride; // Use user's choice for this folder
+                    currentLayoutMode = sessionOverride;
                 } else {
                     const hasMp3s = items.some(item => item.isAudio);
-                    currentLayoutMode = hasMp3s ? 'list' : SUBFOLDER_DEFAULT_VIEW; // Default to list for music, grid for others
+                    currentLayoutMode = hasMp3s ? 'list' : SUBFOLDER_DEFAULT_VIEW;
                 }
             }
-            updateViewControls(); // Show/hide toggles based on root/sub
-            applyLayoutMode(); // Set active class on buttons
+            updateViewControls();
+            applyLayoutMode();
 
             if (!isNavigatingViaPopState && oldPath !== currentDirectory) {
                 history.pushState({ path: currentDirectory }, document.title, buildUrlQuery(currentDirectory));
@@ -1153,22 +1157,21 @@
             allItems.forEach(item => {
                 if (!item.path.startsWith(dirPath) || item.path === dirPath) return;
 
-                // NEW: Hide all images in root directory
                 if (isRoot && item.isImage) return;
 
                 const relativePath = item.path.substring(dirPathLength);
                 const slashIndex = relativePath.indexOf('/');
 
-                if (slashIndex === -1) { // It's a file in the current directory
+                if (slashIndex === -1) {
                     if (!item.isDirectory) itemsMap.set(item.path, { ...item });
-                } else { // It's in a subdirectory
+                } else {
                     const firstPart = relativePath.substring(0, slashIndex);
                     const subDirPath = dirPath + firstPart + '/';
                     if (!itemsMap.has(subDirPath)) {
                         let dirEntry = allItems.find(d => d.path === subDirPath && d.isDirectory);
                         if (dirEntry) {
                             itemsMap.set(subDirPath, { ...dirEntry, coverArt: coverMap.get(subDirPath) || null });
-                        } else { // Create a synthetic directory entry if needed
+                        } else {
                             const yearMatch = firstPart.match(/\((\d{4})\)$/);
                             itemsMap.set(subDirPath, {
                                 name: subDirPath, path: subDirPath, displayName: firstPart, year: yearMatch ? parseInt(yearMatch[1], 10) : null,
@@ -1183,7 +1186,7 @@
             const dirCoverArtPath = coverMap.get(dirPath);
             if (dirCoverArtPath) {
                 for (const item of itemsMap.values()) {
-                    if (item.isAudio && !item.coverArt) { // Assign folder cover only if track has no specific cover
+                    if (item.isAudio && !item.coverArt) {
                         item.coverArt = dirCoverArtPath;
                     }
                 }
@@ -1191,19 +1194,21 @@
             return Array.from(itemsMap.values());
         }
 
-        // --- NEW: Centralized Rendering ---
         function renderFileBrowser(items) {
             fileBrowserContainerEl.innerHTML = ''; 
             fileBrowserContainerEl.className = '';
             hideSkeletonLoader();
             
-            if (items.length === 0) return;
+            if (items.length === 0) {
+                if (searchBox.value.trim() && searchContainer.classList.contains('active')) {
+                    displayStatus('No results found for your search.', false);
+                }
+                return;
+            }
 
-            // Clear previous playing state indicators
             const allRenderedItems = fileBrowserContainerEl.querySelectorAll('.playing-track');
             allRenderedItems.forEach(it => it.classList.remove('playing-track'));
 
-            // Call the appropriate render function based on the layout
             if (currentLayoutMode === 'list') {
                 fileBrowserContainerEl.classList.add('file-browser-list');
                 renderFileBrowserList(items); 
@@ -1212,7 +1217,6 @@
                 renderFileBrowserGrid(items);
             }
 
-            // Re-apply playing state to the new item
             if (currentPlayingFile) {
                 const currentItemEl = fileBrowserContainerEl.querySelector(`[data-path="${CSS.escape(currentPlayingFile.path)}"]`);
                 if (currentItemEl) currentItemEl.classList.add('playing-track');
@@ -1256,12 +1260,11 @@
                 
                 let jumpButtonHTML = isSearchMode ? `<button class="item-jump-to-folder-btn" title="Go to folder" data-path="${item.path}"><i class="fas fa-folder-open"></i></button>` : '';
                 
-                // Use item.title which is now populated from API or parsing
                 const displayName = item.title || item.displayName;
 
                 const infoContainer = document.createElement('div');
                 infoContainer.className = 'grid-item-info';
-                infoContainer.innerHTML = `<div class="file-name-grid" title="${displayName || item.path}">${displayName || '[No Name]'}</div><div class="file-info-grid"><span>${infoText}</span>${jumpButtonHTML}</div>`;
+                infoContainer.innerHTML = `<div class="file-name-grid" title="Click to expand\n${displayName || item.path}">${displayName || '[No Name]'}</div><div class="file-info-grid"><span>${infoText}</span>${jumpButtonHTML}</div>`;
                 
                 itemEl.appendChild(artworkContainer);
                 itemEl.appendChild(infoContainer);
@@ -1269,10 +1272,10 @@
             });
         }
         
-        // MODIFIED: renderFileBrowserList now handles both standard and enhanced views
         function renderFileBrowserList(items) { 
             const isSearchMode = searchBox.value.trim() !== '' && searchContainer.classList.contains('active');
-            const isEnhancedView = !isSearchMode && currentDirectory !== '' && items.some(item => item.isAudio);
+            // MODIFIED: Use enhanced view for search results with audio too.
+            const isEnhancedView = items.some(item => item.isAudio) && ( (currentDirectory !== '' && !isSearchMode) || isSearchMode );
 
             fileBrowserContainerEl.classList.toggle('enhanced-view', isEnhancedView);
 
@@ -1280,13 +1283,14 @@
                 const header = document.createElement('div');
                 header.className = 'file-item-list-header';
                 header.innerHTML = `
-                    <span class="file-icon-list"></span>
-                    <span class="file-title-list">Title</span>
-                    <span class="file-artist-list">Artist</span>
-                    <div class="file-info-list">
-                        <span class="file-duration-list">Duration</span>
-                        <span class="file-size-list">Size</span>
+                    <span class="file-icon-list-header" style="flex: 0 0 20px;"></span>
+                    <span class="file-title-list-header" style="flex: 1 1 50%; min-width: 150px;">Title</span>
+                    <span class="file-artist-list-header" style="flex: 1 1 30%; min-width: 120px;">Artist</span>
+                    <div class="file-info-list-header" style="flex: 0 0 auto; min-width: 125px; display: flex; justify-content: flex-end; gap: 10px;">
+                        <span class="file-duration-list" style="width: 45px; text-align:right;">Duration</span>
+                        <span class="file-size-list" style="min-width: 55px; text-align:right;">Size</span>
                         <span class="file-actions-list" style="width: 28px;"></span>
+                        ${isSearchMode ? `<span class="file-actions-list" style="width: 28px;"></span>` : ''}
                     </div>
                 `;
                 fileBrowserContainerEl.appendChild(header);
@@ -1309,13 +1313,12 @@
                 let infoColumnsHTML = '';
 
                 if (isEnhancedView) {
-                    // --- ENHANCED VIEW LOGIC (for MP3 folders) ---
                     if (item.isAudio) {
                         nameColumnsHTML = `
                             <div class="file-title-list" title="${item.title}">${item.title || '[No Title]'}</div>
                             <div class="file-artist-list" title="${item.artist || ''}">${item.artist || '—'}</div>
                         `;
-                    } else { // For folders or images within an enhanced view
+                    } else { 
                         nameColumnsHTML = `<div class="file-name-full-list" title="${item.displayName}">${item.displayName}</div>`;
                     }
                     
@@ -1323,18 +1326,18 @@
                     const sizeText = item.isDirectory ? (item.year || 'Folder') : formatFileSize(item.size);
                     const sizeHTML = `<span class="file-size-list">${sizeText}</span>`;
                     const downloadHTML = item.isAudio ? createTrackDownloadButtonHTML(item.path, item.displayName) : `<span style="width: 28px;"></span>`;
+                    const jumpHTML = isSearchMode ? `<button class="item-jump-to-folder-btn" title="Go to folder" data-path="${item.path}"><i class="fas fa-folder-open"></i></button>` : '';
 
-                    infoColumnsHTML = `<div class="file-info-list">${durationHTML}${sizeHTML}${downloadHTML}</div>`;
+                    infoColumnsHTML = `<div class="file-info-list">${durationHTML}${sizeHTML}${downloadHTML}${jumpHTML}</div>`;
 
                 } else {
-                    // --- STANDARD VIEW LOGIC (for root or non-MP3 folders) ---
                     const displayName = item.title || item.displayName;
                     nameColumnsHTML = `<div class="file-name-list" title="${displayName || item.path}">${displayName || '[No Name]'}</div>`;
                     
                     const durationHTML = item.isAudio ? `<span class="file-duration-list" data-path="${item.path}">${item.duration ? formatTime(item.duration) : '--:--'}</span>` : '';
                     const sizeText = item.isDirectory ? (item.year || 'Folder') : formatFileSize(item.size);
                     const sizeHTML = `<span class="file-size-list">${sizeText}</span>`;
-                    const jumpHTML = isSearchMode && item.isAudio ? `<button class="item-jump-to-folder-btn" title="Go to folder" data-path="${item.path}"><i class="fas fa-folder-open"></i></button>` : '';
+                    const jumpHTML = ''; // Jump button only in search/enhanced view now
                     const downloadHTML = item.isAudio ? createTrackDownloadButtonHTML(item.path, item.displayName) : '';
                     
                     infoColumnsHTML = `<div class="file-info-list">${durationHTML}${sizeHTML}${jumpHTML}${downloadHTML}</div>`;
@@ -1349,8 +1352,6 @@
             return `<button class="track-download-btn" title="Download ${itemDisplayName}" data-path="${itemPath}"><div class="btn-content-wrapper"><span class="btn-icon"><i class="fas fa-download"></i></span><svg class="circular-progress" viewBox="0 0 36 36"><circle class="progress-background" cx="18" cy="18" r="15.9155" fill="transparent" stroke-width="3.5"></circle><circle class="progress-bar-circle" cx="18" cy="18" r="15.9155" fill="transparent" stroke-width="3.5" stroke-dasharray="100" stroke-dashoffset="100"></circle></svg><span class="download-progress-text">0%</span></div></button>`;
         }
         
-        // --- End of Rendering Functions ---
-
         function formatFileSize(bytes) { if (bytes === undefined || bytes === null || bytes < 0) return ''; if (bytes === 0) return '0 B'; if (bytes < 1024) return bytes + ' B'; const i = Math.floor(Math.log(bytes) / Math.log(1024)); const units = ['B', 'KB', 'MB', 'GB', 'TB']; const unitIndex = Math.min(i, units.length - 1); const fixedDigits = unitIndex >= 2 ? 1 : 0; return parseFloat((bytes / Math.pow(1024, unitIndex)).toFixed(fixedDigits)) + ' ' + units[unitIndex];}
 
         function updateBreadcrumbs() {
@@ -1387,7 +1388,8 @@
 
         function updateViewControls() {
             const isRoot = currentDirectory === '';
-            gridListToggleContainer.style.display = isRoot ? 'none' : 'flex';
+            const isSearchActive = searchBox.value.trim() !== '' && searchContainer.classList.contains('active');
+            gridListToggleContainer.style.display = (isRoot && !isSearchActive) ? 'none' : 'flex';
         }
 
         function toggleSearch(forceState) {
@@ -1420,34 +1422,55 @@
             fileBrowserContainerEl.innerHTML = '';
             statusMessageEl.innerHTML = `<span class="loader"></span>Searching...`;
             statusMessageEl.classList.add('visible');
-            const searchWords = searchTerm.toLowerCase().split(/\s+/).filter(word => word.length > 0);
-            const results = [];
-            const filesToSearch = allArchiveFiles.filter(file => !file.isDirectory); // Search all files
-            for (let i = 0; i < filesToSearch.length; i++) {
-                const file = filesToSearch[i];
-                const combinedMeta = `${(file.title || file.displayName || '').toLowerCase()} ${(file.artist || '').toLowerCase()} ${(file.album || '').toLowerCase()} ${file.path.toLowerCase()}`;
-                if (searchWords.every(word => combinedMeta.includes(word))) {
-                    results.push({ ...file });
-                }
-                if ((i + 1) % SEARCH_CHUNK_SIZE === 0) await new Promise(resolve => setTimeout(resolve, 0));
-            }
-            results.sort((a, b) => (a.title || a.displayName).localeCompare(b.title || b.displayName));
-            currentDirectoryItems = results;
-            currentTracklist = results.filter(item => item.isAudio);
-            currentTrackIndex = currentPlayingFile ? currentTracklist.findIndex(track => track.path === currentPlayingFile.path) : -1;
-            
-            // For search results, let's default to list view as it's more informative for mixed file types
-            currentLayoutMode = 'list'; 
-            applyLayoutMode();
-            gridListToggleContainer.style.display = 'flex'; // Allow toggling in search results
 
-            updatePrevNextButtons();
-            updateDownloadAllButtonState();
-            updateItemCountDisplay();
-            updateBreadcrumbs();
-            sortButtonsContainer.style.display = 'none'; // Hide sorting in search
-            renderFileBrowser(results);
-            if (results.length > 0) hideLoading();
+            try {
+                const searchWords = searchTerm.toLowerCase().split(/\s+/).filter(word => word.length > 0);
+                const results = [];
+                const filesToSearch = allArchiveFiles; // Search all files and folders
+
+                for (let i = 0; i < filesToSearch.length; i++) {
+                    const file = filesToSearch[i];
+                    const combinedMeta = `${(file.title || file.displayName || '').toLowerCase()} ${(file.artist || '').toLowerCase()} ${(file.album || '').toLowerCase()} ${file.path.toLowerCase()}`;
+                    
+                    if (searchWords.every(word => combinedMeta.includes(word))) {
+                        const resultFile = { ...file };
+                        
+                        // Assign cover art from parent folder if it exists
+                        const dirPath = resultFile.path.substring(0, resultFile.path.lastIndexOf('/') + 1);
+                        const folderCover = coverMap.get(dirPath);
+                        if (folderCover) {
+                            resultFile.coverArt = folderCover;
+                        }
+                        results.push(resultFile);
+                    }
+                    if ((i + 1) % SEARCH_CHUNK_SIZE === 0) await new Promise(resolve => setTimeout(resolve, 0));
+                }
+                
+                results.sort((a, b) => (a.title || a.displayName).localeCompare(b.title || b.displayName, undefined, { numeric: true, sensitivity: 'base' }));
+                currentDirectoryItems = results;
+                currentTracklist = results.filter(item => item.isAudio);
+                currentTrackIndex = currentPlayingFile ? currentTracklist.findIndex(track => track.path === currentPlayingFile.path) : -1;
+
+                currentLayoutMode = 'list'; 
+                applyLayoutMode();
+                
+                updatePrevNextButtons();
+                updateDownloadAllButtonState();
+                updateItemCountDisplay();
+                updateBreadcrumbs();
+                sortButtonsContainer.style.display = 'none';
+                renderFileBrowser(results);
+
+            } catch (error) {
+                console.error("Search failed:", error);
+                displayStatus(`Search failed. ${sanitizeErrorMessage(error.message, "performSearch")}`, true);
+            } finally {
+                hideSkeletonLoader();
+                // Only hide the "Searching..." message. Don't hide an error message or "No results".
+                if (statusMessageEl.textContent.includes("Searching...")) {
+                     statusMessageEl.classList.remove('visible');
+                }
+            }
         }
 
         async function getMetadataFromTags(file, arrayBuffer) { return new Promise((resolve) => { if (typeof jsmediatags === 'undefined') { resolve({}); return; } jsmediatags.read(new Blob([arrayBuffer]), { onSuccess: (tag) => resolve({ title: tag.tags.title, artist: tag.tags.artist, album: tag.tags.album, picture: tag.tags.picture }), onError: (error) => { console.warn('jsmediatags error:', file?.path, error.type, error.info); resolve({}); } }); }); }
@@ -1490,11 +1513,11 @@
             const allItems = fileBrowserContainerEl.querySelectorAll('.playing-track');
             allItems.forEach(it => it.classList.remove('playing-track'));
 
-            if (currentPlayingFile?.path === file.path && isPlaying && currentAudioBuffer) { togglePlayback(); return; }
+            if (currentPlayingFile?.path === file.path && isPlaying && currentAudioBuffer) { await togglePlayback(); return; }
             currentTracklist = contextTracklist || [];
-            if (currentPlayingFile?.path === file.path && !isPlaying && currentAudioBuffer) { startPlayback(0); return; }
+            if (currentPlayingFile?.path === file.path && !isPlaying && currentAudioBuffer) { await startPlayback(0); return; }
 
-            stopPlayback();
+            await stopPlayback();
             currentPlayingFile = { ...file };
             currentTrackIndex = currentTracklist.findIndex(track => track.path === file.path);
             
@@ -1514,8 +1537,8 @@
                 displayMetadataInPlayer(cachedData.metadata);
                 fetchAndRenderLyrics(currentPlayingFile);
                 
-                if (currentAudioBuffer) { startPlayback(0); updateFileDurationInList(file.path, currentAudioBuffer.duration); }
-                else { console.error("Invalid cached buffer:", file.path); audioCache.delete(file.path); updatePlayerUI(false); displayStatus(`Error: Invalid cached audio. ${sanitizeErrorMessage("Invalid cached buffer", file.path)}`, true); stopPlayback(true); }
+                if (currentAudioBuffer) { await startPlayback(0); updateFileDurationInList(file.path, currentAudioBuffer.duration); }
+                else { console.error("Invalid cached buffer:", file.path); audioCache.delete(file.path); updatePlayerUI(false); displayStatus(`Error: Invalid cached audio. ${sanitizeErrorMessage("Invalid cached buffer", file.path)}`, true); await stopPlayback(true); }
                 updatePrevNextButtons(); return;
             }
 
@@ -1549,7 +1572,7 @@
                 
                 const tagsMetadata = await getMetadataFromTags(file, arrayBuffer);
                 if (!currentPlayingFile || file.path !== currentPlayingFile.path) { cleanupPlaybackResources(); return; }
-                // Prioritize fresh tags, but keep existing file data as fallback
+
                 currentPlayingFile.metadata = tagsMetadata; 
                 currentPlayingFile.title = tagsMetadata?.title || currentPlayingFile.title; 
                 currentPlayingFile.artist = tagsMetadata?.artist || currentPlayingFile.artist;
@@ -1560,7 +1583,7 @@
                 displayMetadataInPlayer(currentPlayingFile.metadata);
                 fetchAndRenderLyrics(currentPlayingFile);
                 
-                startPlayback(0);
+                await startPlayback(0);
                 updatePrevNextButtons();
                 updateFileDurationInList(file.path, currentAudioBuffer?.duration);
             } catch (error) {
@@ -1570,7 +1593,7 @@
                     if (currentPlayingFile && file.path === currentPlayingFile.path) cleanupPlaybackResources();
                 } else {
                     if (currentPlayingFile && file.path === currentPlayingFile.path) {
-                        stopPlayback(true);
+                        await stopPlayback(true);
                         displayStatus(`Error playing "${file.displayName || 'track'}". ${sanitizeErrorMessage(error.message, `Play attempt for: ${file.path}`)}`, true);
                         updatePlayerUI(false);
                     } else {
@@ -1629,8 +1652,16 @@
             throw new Error(`Fetch failed unexpectedly.`);
         }
         function cleanupPlaybackResources() { clearInterval(progressUpdateInterval); progressUpdateInterval = null; if (sourceNode) { try { sourceNode.onended = null; sourceNode.disconnect(); if (isPlaying || audioContext?.state === 'running') sourceNode.stop(); } catch (e) {} sourceNode = null; } if (fetchAbortController) { fetchAbortController.abort("Playback stopped/changed"); fetchAbortController = null; } }
-        function startPlayback(offset = 0) { if (!currentAudioBuffer || !audioContext || !gainNode) { stopPlayback(true); return; } if (audioContext.state === 'suspended') audioContext.resume().then(() => _performStartPlayback(offset)).catch(err => { console.error("Resume failed", err); stopPlayback(true); }); else _performStartPlayback(offset); }
-        function _performStartPlayback(offset) {
+        
+        async function startPlayback(offset = 0) { 
+            if (!currentAudioBuffer || !audioContext || !gainNode) { await stopPlayback(true); return; } 
+            if (audioContext.state === 'suspended') {
+                try { await audioContext.resume(); } catch (err) { console.error("Resume failed", err); await stopPlayback(true); return; }
+            }
+            await _performStartPlayback(offset); 
+        }
+
+        async function _performStartPlayback(offset) {
             if (!audioContext || !currentAudioBuffer) return;
             cleanupPlaybackResources();
             sourceNode = audioContext.createBufferSource();
@@ -1646,18 +1677,18 @@
                 isPlaying = true;
             } catch (e) {
                 console.error("Error starting source node:", e);
-                stopPlayback(true);
+                await stopPlayback(true);
                 displayStatus(`Playback start error. ${sanitizeErrorMessage(e.message, "SourceNode start")}`, true);
                 return;
             }
             sourceNode.onended = handleTrackEnd;
             progressUpdateInterval = setInterval(updateProgress, 250);
             
-            if (isLyricsViewActive) updatePlayerUI();
+            if (isLyricsViewActive) { updatePlayerUI(); }
             else if (playerState !== 'standard') { playerState = 'standard'; applyPlayerState(); saveSetting('playerState', playerState); } 
-            else updatePlayerUI();
+            else { updatePlayerUI(); }
         }
-        function stopPlayback(clearInfo = false) {
+        async function stopPlayback(clearInfo = false) {
             if (isPlaying && sourceNode && audioContext) _pausedTime = getCurrentPlaybackTime();
             isPlaying = false;
             cleanupPlaybackResources();
@@ -1667,7 +1698,7 @@
                 _startOffset = 0; _pausedTime = 0;
                 nowPlayingEl.textContent = 'Not playing'; nowPlayingEl.title = 'Not playing';
                 nowPlayingArtistAlbumEl.textContent = 'Select an MP3 file'; nowPlayingPathEl.textContent = '';
-                albumArtImg.src = ''; albumArtImg.style.display = 'none'; albumArtIcon.classList.remove('hidden');
+                albumArtImg.src = ''; albumArtImg.classList.remove('loaded'); albumArtIcon.classList.remove('hidden');
                 albumArtLoader.classList.remove('visible');
                 durationEl.textContent = '0:00'; currentTimeEl.textContent = '0:00';
                 progressBar.style.width = '0%'; miniProgressBar.style.setProperty('--progress-width', '0%');
@@ -1679,12 +1710,12 @@
             updatePlayerUI();
             if(!isLyricsViewActive) applyPlayerState();
         }
-        function togglePlayback() { 
+        async function togglePlayback() { 
             if (!currentAudioBuffer || !audioContext) return; 
-            if (isPlaying) stopPlayback(false); 
+            if (isPlaying) { await stopPlayback(false); }
             else { 
                 const resumeTime = (_pausedTime > 0 && currentAudioBuffer && _pausedTime < currentAudioBuffer.duration) ? _pausedTime : 0; 
-                startPlayback(resumeTime); 
+                await startPlayback(resumeTime); 
             } 
             if (currentPlayingFile) {
                 const currentItemEl = fileBrowserContainerEl.querySelector(`[data-path="${CSS.escape(currentPlayingFile.path)}"]`);
@@ -1692,17 +1723,18 @@
             }
         }
         function getCurrentPlaybackTime() { if (!audioContext || !currentAudioBuffer) return 0; if (isPlaying && sourceNode && _startTime > 0) { const elapsedTime = audioContext.currentTime - _startTime; const progressedTime = elapsedTime * currentPlaybackRate; return Math.max(0, Math.min(currentAudioBuffer.duration, _startOffset + progressedTime)); } else return Math.max(0, Math.min(currentAudioBuffer?.duration || 0, _pausedTime)); }
-        function handleTrackEnd(event) { const endedNaturally = isPlaying && currentAudioBuffer && Math.abs(getCurrentPlaybackTime() - currentAudioBuffer.duration) < 0.1; if (currentAudioBuffer) _pausedTime = currentAudioBuffer.duration; _startTime = 0; const wasPlaying = isPlaying; isPlaying = false; cleanupPlaybackResources(); updateProgress(); updatePlayerUI(); if (wasPlaying && endedNaturally) playNext(); }
+        async function handleTrackEnd(event) { const endedNaturally = isPlaying && currentAudioBuffer && Math.abs(getCurrentPlaybackTime() - currentAudioBuffer.duration) < 0.1; if (currentAudioBuffer) _pausedTime = currentAudioBuffer.duration; _startTime = 0; const wasPlaying = isPlaying; isPlaying = false; cleanupPlaybackResources(); updateProgress(); updatePlayerUI(); if (wasPlaying && endedNaturally) await playNext(); }
         function seek(offsetSeconds) { if (!currentAudioBuffer || !audioContext) return; const currentPosition = getCurrentPlaybackTime(); let seekTime = currentPosition + offsetSeconds; seekTo(seekTime); }
-        function seekTo(time) {
+        
+        async function seekTo(time) {
             if (!currentAudioBuffer || !audioContext) return;
             const seekTime = Math.max(0, Math.min(time, currentAudioBuffer.duration));
             _pausedTime = seekTime;
-            if (isPlaying) startPlayback(seekTime);
+            if (isPlaying) { await startPlayback(seekTime); }
             else { _startOffset = seekTime; updateProgress(); }
         }
-        function playNext() { if (!currentTracklist || currentTracklist.length === 0) return; let nextIndex = currentTrackIndex + 1; if (nextIndex >= currentTracklist.length) nextIndex = 0; if (currentTracklist[nextIndex]) playAudioFile(currentTracklist[nextIndex], currentTracklist); else stopPlayback(true); }
-        function playPrev() { if (!currentTracklist || currentTracklist.length === 0) return; if (getCurrentPlaybackTime() > 3 && currentTrackIndex !== -1) { seekTo(0); return; } let prevIndex = currentTrackIndex - 1; if (prevIndex < 0) prevIndex = currentTracklist.length - 1; if (currentTracklist[prevIndex]) playAudioFile(currentTracklist[prevIndex], currentTracklist); else stopPlayback(true); }
+        async function playNext() { if (!currentTracklist || currentTracklist.length === 0) return; let nextIndex = currentTrackIndex + 1; if (nextIndex >= currentTracklist.length) nextIndex = 0; if (currentTracklist[nextIndex]) await playAudioFile(currentTracklist[nextIndex], currentTracklist); else await stopPlayback(true); }
+        async function playPrev() { if (!currentTracklist || currentTracklist.length === 0) return; if (getCurrentPlaybackTime() > 3 && currentTrackIndex !== -1) { await seekTo(0); return; } let prevIndex = currentTrackIndex - 1; if (prevIndex < 0) prevIndex = currentTracklist.length - 1; if (currentTracklist[prevIndex]) await playAudioFile(currentTracklist[prevIndex], currentTracklist); else await stopPlayback(true); }
 
         async function triggerDownload() { 
             if (!currentPlayingFile || !currentPlayingFile.path || downloadBtn.classList.contains('loading') || downloadBtn.disabled) return; 
@@ -1866,7 +1898,6 @@
         function showSearchHintIfNeeded() { if (localStorage.getItem('searchHintDismissed') !== 'true') { setTimeout(() => searchHintPopup?.classList.add('visible'), 1500); } }
         function dismissSearchHint() { if (!searchHintPopup) return; searchHintPopup.style.opacity = '0'; setTimeout(() => searchHintPopup.classList.remove('visible'), 300); try { localStorage.setItem('searchHintDismissed', 'true'); } catch (e) {} }
 
-        // --- Lyrics Functions ---
         function toggleLyricsView() { isLyricsViewActive = !isLyricsViewActive; bodyEl.classList.toggle('lyrics-view-active', isLyricsViewActive); if (isLyricsViewActive && isPlaying) { lastActiveLyricIndex = -1; updateSyncedLyrics(getCurrentPlaybackTime()); } }
         
         async function fetchAndRenderLyrics(file) {
@@ -1934,7 +1965,6 @@
             }
         }
 
-        // --- Multi-Download Functions ---
         function updateDownloadAllButtonState() {
             if (!downloadAllBtn || downloadAllBtn.classList.contains('loading')) return;
             const itemsInView = currentDirectoryItems.filter(item => item.isAudio || item.isImage);
@@ -1946,7 +1976,6 @@
             if (downloadAllBtn.classList.contains('loading')) return;
             const tracksToDownload = currentDirectoryItems.filter(item => item.isAudio);
             
-            // Also include the folder's cover art if it exists
             const coverPath = coverMap.get(currentDirectory);
             let coverFile = null;
             if (coverPath) {
@@ -2002,7 +2031,6 @@
             }
         }
         
-        // --- Image Viewer Functions ---
         function openImageViewer(item) {
             if (!item || !item.isImage) return;
             const imageUrl = `${archiveDownloadUrlBase}/${encodeURIComponent(item.path)}`;
@@ -2078,6 +2106,10 @@
                     event.stopPropagation();
                     const downloadButton = event.target.closest('.track-download-btn');
                     downloadSpecificTrack(filePath, downloadButton, itemData.displayName, false);
+                } else if (event.target.closest('.file-name-grid')) {
+                    event.stopPropagation();
+                    const nameEl = event.target.closest('.file-name-grid');
+                    nameEl.classList.toggle('expanded');
                 } else if (event.target.closest('.item-jump-to-folder-btn')) {
                     event.stopPropagation();
                     const pathParts = filePath.split('/').filter(p => p); pathParts.pop();
