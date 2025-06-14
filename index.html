@@ -198,7 +198,6 @@
         .play-overlay:hover { background-color: var(--accent-hover); transform: scale(1.1) !important; }
         
         .grid-item-info { padding: 0 4px; text-align: left; }
-        /* MODIFIED: For expandable name */
         .file-name-grid { 
             font-size: 0.9rem; font-weight: 600; line-height: 1.3;
             overflow: hidden; 
@@ -1274,7 +1273,6 @@
         
         function renderFileBrowserList(items) { 
             const isSearchMode = searchBox.value.trim() !== '' && searchContainer.classList.contains('active');
-            // MODIFIED: Use enhanced view for search results with audio too.
             const isEnhancedView = items.some(item => item.isAudio) && ( (currentDirectory !== '' && !isSearchMode) || isSearchMode );
 
             fileBrowserContainerEl.classList.toggle('enhanced-view', isEnhancedView);
@@ -1426,7 +1424,7 @@
             try {
                 const searchWords = searchTerm.toLowerCase().split(/\s+/).filter(word => word.length > 0);
                 const results = [];
-                const filesToSearch = allArchiveFiles; // Search all files and folders
+                const filesToSearch = allArchiveFiles;
 
                 for (let i = 0; i < filesToSearch.length; i++) {
                     const file = filesToSearch[i];
@@ -1435,8 +1433,7 @@
                     if (searchWords.every(word => combinedMeta.includes(word))) {
                         const resultFile = { ...file };
                         
-                        // Assign cover art from parent folder if it exists
-                        const dirPath = resultFile.path.substring(0, resultFile.path.lastIndexOf('/') + 1);
+                        const dirPath = resultFile.isDirectory ? resultFile.path : resultFile.path.substring(0, resultFile.path.lastIndexOf('/') + 1);
                         const folderCover = coverMap.get(dirPath);
                         if (folderCover) {
                             resultFile.coverArt = folderCover;
@@ -1446,7 +1443,18 @@
                     if ((i + 1) % SEARCH_CHUNK_SIZE === 0) await new Promise(resolve => setTimeout(resolve, 0));
                 }
                 
-                results.sort((a, b) => (a.title || a.displayName).localeCompare(b.title || b.displayName, undefined, { numeric: true, sensitivity: 'base' }));
+                // --- NEW/FIXED: Sort search results to show folders first ---
+                results.sort((a, b) => {
+                    const aIsDir = a.isDirectory ? 0 : 1;
+                    const bIsDir = b.isDirectory ? 0 : 1;
+                    if (aIsDir !== bIsDir) {
+                        return aIsDir - bIsDir; // Directories first
+                    }
+                    const nameA = a.title || a.displayName || '';
+                    const nameB = b.title || b.displayName || '';
+                    return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+                });
+                
                 currentDirectoryItems = results;
                 currentTracklist = results.filter(item => item.isAudio);
                 currentTrackIndex = currentPlayingFile ? currentTracklist.findIndex(track => track.path === currentPlayingFile.path) : -1;
@@ -1466,7 +1474,6 @@
                 displayStatus(`Search failed. ${sanitizeErrorMessage(error.message, "performSearch")}`, true);
             } finally {
                 hideSkeletonLoader();
-                // Only hide the "Searching..." message. Don't hide an error message or "No results".
                 if (statusMessageEl.textContent.includes("Searching...")) {
                      statusMessageEl.classList.remove('visible');
                 }
@@ -1653,10 +1660,18 @@
         }
         function cleanupPlaybackResources() { clearInterval(progressUpdateInterval); progressUpdateInterval = null; if (sourceNode) { try { sourceNode.onended = null; sourceNode.disconnect(); if (isPlaying || audioContext?.state === 'running') sourceNode.stop(); } catch (e) {} sourceNode = null; } if (fetchAbortController) { fetchAbortController.abort("Playback stopped/changed"); fetchAbortController = null; } }
         
+        // --- NEW/FIXED: Refined playback functions to fix initial spinner bug ---
         async function startPlayback(offset = 0) { 
             if (!currentAudioBuffer || !audioContext || !gainNode) { await stopPlayback(true); return; } 
             if (audioContext.state === 'suspended') {
-                try { await audioContext.resume(); } catch (err) { console.error("Resume failed", err); await stopPlayback(true); return; }
+                try { 
+                    await audioContext.resume(); 
+                } catch (err) { 
+                    console.error("AudioContext resume failed:", err); 
+                    await stopPlayback(true);
+                    displayStatus(`Could not start audio. Please interact with the page and try again.`, true);
+                    return; 
+                }
             }
             await _performStartPlayback(offset); 
         }
@@ -1669,25 +1684,36 @@
             sourceNode.playbackRate.value = currentPlaybackRate;
             sourceNode.connect(gainNode);
             const validOffset = Math.max(0, Math.min(offset, currentAudioBuffer.duration));
-            _startOffset = validOffset;
-            _startTime = audioContext.currentTime;
-            _pausedTime = 0;
+        
             try {
                 sourceNode.start(0, validOffset);
                 isPlaying = true;
+                _startOffset = validOffset;
+                _startTime = audioContext.currentTime;
+                _pausedTime = 0;
+        
+                // Crucial fix: Immediately update the UI to the "playing" state after successfully calling start().
+                updatePlayerUI(false); 
+        
             } catch (e) {
                 console.error("Error starting source node:", e);
+                isPlaying = false; // Ensure state is correct
                 await stopPlayback(true);
                 displayStatus(`Playback start error. ${sanitizeErrorMessage(e.message, "SourceNode start")}`, true);
                 return;
             }
+        
             sourceNode.onended = handleTrackEnd;
             progressUpdateInterval = setInterval(updateProgress, 250);
             
-            if (isLyricsViewActive) { updatePlayerUI(); }
-            else if (playerState !== 'standard') { playerState = 'standard'; applyPlayerState(); saveSetting('playerState', playerState); } 
-            else { updatePlayerUI(); }
+            // Handle player expansion, which also calls updatePlayerUI
+            if (!isLyricsViewActive && playerState !== 'standard') { 
+                playerState = 'standard'; 
+                applyPlayerState();
+                saveSetting('playerState', playerState); 
+            }
         }
+        
         async function stopPlayback(clearInfo = false) {
             if (isPlaying && sourceNode && audioContext) _pausedTime = getCurrentPlaybackTime();
             isPlaying = false;
@@ -1724,8 +1750,6 @@
         }
         function getCurrentPlaybackTime() { if (!audioContext || !currentAudioBuffer) return 0; if (isPlaying && sourceNode && _startTime > 0) { const elapsedTime = audioContext.currentTime - _startTime; const progressedTime = elapsedTime * currentPlaybackRate; return Math.max(0, Math.min(currentAudioBuffer.duration, _startOffset + progressedTime)); } else return Math.max(0, Math.min(currentAudioBuffer?.duration || 0, _pausedTime)); }
         async function handleTrackEnd(event) { const endedNaturally = isPlaying && currentAudioBuffer && Math.abs(getCurrentPlaybackTime() - currentAudioBuffer.duration) < 0.1; if (currentAudioBuffer) _pausedTime = currentAudioBuffer.duration; _startTime = 0; const wasPlaying = isPlaying; isPlaying = false; cleanupPlaybackResources(); updateProgress(); updatePlayerUI(); if (wasPlaying && endedNaturally) await playNext(); }
-        function seek(offsetSeconds) { if (!currentAudioBuffer || !audioContext) return; const currentPosition = getCurrentPlaybackTime(); let seekTime = currentPosition + offsetSeconds; seekTo(seekTime); }
-        
         async function seekTo(time) {
             if (!currentAudioBuffer || !audioContext) return;
             const seekTime = Math.max(0, Math.min(time, currentAudioBuffer.duration));
@@ -1733,8 +1757,10 @@
             if (isPlaying) { await startPlayback(seekTime); }
             else { _startOffset = seekTime; updateProgress(); }
         }
+        function seek(offsetSeconds) { if (!currentAudioBuffer || !audioContext) return; const currentPosition = getCurrentPlaybackTime(); let seekTime = currentPosition + offsetSeconds; seekTo(seekTime); }
         async function playNext() { if (!currentTracklist || currentTracklist.length === 0) return; let nextIndex = currentTrackIndex + 1; if (nextIndex >= currentTracklist.length) nextIndex = 0; if (currentTracklist[nextIndex]) await playAudioFile(currentTracklist[nextIndex], currentTracklist); else await stopPlayback(true); }
         async function playPrev() { if (!currentTracklist || currentTracklist.length === 0) return; if (getCurrentPlaybackTime() > 3 && currentTrackIndex !== -1) { await seekTo(0); return; } let prevIndex = currentTrackIndex - 1; if (prevIndex < 0) prevIndex = currentTracklist.length - 1; if (currentTracklist[prevIndex]) await playAudioFile(currentTracklist[prevIndex], currentTracklist); else await stopPlayback(true); }
+        // --- End of refined playback functions ---
 
         async function triggerDownload() { 
             if (!currentPlayingFile || !currentPlayingFile.path || downloadBtn.classList.contains('loading') || downloadBtn.disabled) return; 
