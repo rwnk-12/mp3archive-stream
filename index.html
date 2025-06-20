@@ -850,6 +850,10 @@
         const audioCache = new Map();
         const cacheOrder = [];
 
+        // --- NEW: Performance Constants & Helpers ---
+        const PROCESSING_CHUNK_SIZE = 1000; // Process 1000 files before yielding to prevent freezing
+        const yieldToMainThread = () => new Promise(resolve => setTimeout(resolve, 0));
+
         // --- Constants ---
         const VIEW_MODE_FOLDER = 'folder';
         const SEARCH_CHUNK_SIZE = 100;
@@ -940,7 +944,9 @@
                 const data = await response.json();
                 if (!data.files || !Array.isArray(data.files)) throw new Error('Invalid archive structure: No files array found.');
                 
-                let processedFiles = processRawFiles(data.files);
+                // *** FIX: Await the new async processing function ***
+                let processedFiles = await processRawFiles(data.files);
+                
                 [allArchiveFiles, coverMap] = mapCoverArtAndGetMap(processedFiles);
                 
                 updateDirectoryView(currentDirectory);
@@ -1004,47 +1010,87 @@
             return { artist: null, title: title };
         }
 
-        function processRawFiles(rawFiles) {
-             const yearRegex = /\((\d{4})\)$/;
-             return rawFiles.map(file => {
-                 const path = file.name;
-                 let displayName = path.split('/').filter(p => p).pop() || path;
-                 const yearMatch = displayName.match(yearRegex);
-                 const year = yearMatch ? parseInt(yearMatch[1], 10) : null;
-                 let isDirectory = path.endsWith('/');
-                 if (!isDirectory) {
-                      for (const otherFile of rawFiles) {
-                          if (otherFile.name !== path && otherFile.name.startsWith(path + '/')) { 
-                              isDirectory = true; break; 
-                          }
-                      }
-                 }
-                 const isAudio = !isDirectory && path.toLowerCase().endsWith('.mp3');
-                 const isImage = !isDirectory && path.toLowerCase().match(/\.(jpe?g|png|webp|gif)$/i);
-                 let durationSeconds = file.length && !isNaN(parseFloat(file.length)) ? parseFloat(file.length) : undefined;
-                 
-                 let apiArtist = (file.creator || file.artist || '').split(';')[0].trim() || null;
-                 let apiAlbum = (file.album || '').split('g;')[0].trim() || null;
-                 let apiTitle = file.title || null;
-                 
-                 let parsedData = { title: displayName.replace(/\.mp3$/i, ''), artist: null };
-                 if (isAudio) {
-                     parsedData = parseFileName(displayName);
-                 }
-                 
-                 return {
-                     name: file.name, path: path, size: file.size ? parseInt(file.size) : 0, format: file.format || '',
-                     isDirectory, isAudio, isImage, displayName, duration: durationSeconds, year,
-                     title: apiTitle || parsedData.title,
-                     artist: apiArtist || parsedData.artist,
-                     album: apiAlbum,
-                     metadata: null, coverArt: null
-                 };
-             }).filter(file => file.isDirectory || file.isAudio || file.isImage);
+        // *** FIX: HIGH-PERFORMANCE, NON-BLOCKING FILE PROCESSING ***
+        async function processRawFiles(rawFiles) {
+            const yearRegex = /\((\d{4})\)$/;
+            const processedFiles = [];
+            const directorySet = new Set();
+            const totalFiles = rawFiles.length;
+
+            // --- Step 1: Efficiently find all directories first (O(n)) ---
+            // This is a pre-computation step to avoid the O(n^2) loop later.
+            for (let i = 0; i < totalFiles; i++) {
+                const path = rawFiles[i].name;
+                if (path.includes('/')) {
+                    // Extract the parent directory path and add it to our Set
+                    const parentPath = path.substring(0, path.lastIndexOf('/') + 1);
+                    directorySet.add(parentPath);
+                }
+
+                // Give the browser a chance to breathe during this initial scan
+                if (i % PROCESSING_CHUNK_SIZE === 0) {
+                    await yieldToMainThread();
+                }
+            }
+            
+            // --- Step 2: Process each file with fast directory lookups (O(n)) ---
+            for (let i = 0; i < totalFiles; i++) {
+                const file = rawFiles[i];
+                const path = file.name;
+
+                // Our new, super-fast directory check. O(1) lookup time.
+                const isDirectory = directorySet.has(path);
+
+                const isAudio = !isDirectory && path.toLowerCase().endsWith('.mp3');
+                const isImage = !isDirectory && path.toLowerCase().match(/\.(jpe?g|png|webp|gif)$/i);
+
+                // Only include items we actually want to display
+                if (!isDirectory && !isAudio && !isImage) {
+                    continue;
+                }
+                
+                let displayName = path.split('/').filter(p => p).pop() || path;
+                if (isDirectory) {
+                    // For directories, the display name is the last part without the trailing slash
+                    displayName = path.slice(0, -1).split('/').pop();
+                }
+
+                const yearMatch = displayName.match(yearRegex);
+                const year = yearMatch ? parseInt(yearMatch[1], 10) : null;
+                let durationSeconds = file.length && !isNaN(parseFloat(file.length)) ? parseFloat(file.length) : undefined;
+
+                let apiArtist = (file.creator || file.artist || '').split(';')[0].trim() || null;
+                let apiAlbum = (file.album || '').split('g;')[0].trim() || null;
+                let apiTitle = file.title || null;
+
+                let parsedData = { title: displayName.replace(/\.mp3$/i, ''), artist: null };
+                if (isAudio) {
+                    parsedData = parseFileName(displayName);
+                }
+
+                processedFiles.push({
+                    name: file.name, path: path, size: file.size ? parseInt(file.size) : 0, format: file.format || '',
+                    isDirectory, isAudio, isImage, displayName, duration: durationSeconds, year,
+                    title: apiTitle || parsedData.title,
+                    artist: apiArtist || parsedData.artist,
+                    album: apiAlbum,
+                    metadata: null, coverArt: null
+                });
+
+                // The magic "no-freeze" part.
+                if (i % PROCESSING_CHUNK_SIZE === 0) {
+                    // Update the loading message to show progress
+                    statusMessageEl.innerHTML = `<span class="loader"></span>Processing archive... (${Math.round((i / totalFiles) * 100)}%)`;
+                    // Yield to the main thread
+                    await yieldToMainThread();
+                }
+            }
+
+            return processedFiles;
         }
 
         function showInitialLoading() { populateSkeletonLoaders(); showSkeletonLoader(true); statusMessageEl.innerHTML = `<span class="loader"></span>Loading archive... Please wait.`; statusMessageEl.classList.add('visible'); fileBrowserContainerEl.innerHTML = ''; if (itemCountDisplayEl) itemCountDisplayEl.style.display = 'none'; }
-        function hideInitialLoading() { hideSkeletonLoader(); if (statusMessageEl.textContent.includes("Loading archive")) { statusMessageEl.classList.remove('visible'); statusMessageEl.innerHTML = ''; } }
+        function hideInitialLoading() { hideSkeletonLoader(); if (statusMessageEl.textContent.includes("Loading archive") || statusMessageEl.textContent.includes("Processing archive")) { statusMessageEl.classList.remove('visible'); statusMessageEl.innerHTML = ''; } }
         function showSkeletonLoader(show) { populateSkeletonLoaders(); skeletonLoaderEl.style.display = show ? (currentLayoutMode === 'grid' ? 'grid' : 'flex') : 'none'; skeletonLoaderEl.className = `file-browser-${currentLayoutMode}${show ? ' visible': ''}`; }
         function hideSkeletonLoader() { skeletonLoaderEl.style.display = 'none'; }
         function displayStatus(message, isError = false) { statusMessageEl.innerHTML = message; statusMessageEl.style.color = isError ? 'var(--accent-color)' : 'var(--text-secondary)'; statusMessageEl.classList.add('visible'); fileBrowserContainerEl.innerHTML = ''; hideSkeletonLoader(); if (itemCountDisplayEl) { itemCountDisplayEl.textContent = ''; itemCountDisplayEl.style.display = 'none';}}
