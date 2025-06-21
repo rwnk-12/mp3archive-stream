@@ -2095,7 +2095,6 @@
             }
 
             try {
-                // Use the /api/search endpoint for better matching
                 const url = new URL(`${lyricsApiUrl}/search`);
                 url.searchParams.append('track_name', title);
                 url.searchParams.append('artist_name', artist);
@@ -2112,42 +2111,64 @@
                     return;
                 }
 
-                // Find the best match from the results array using a scoring system
+                // --- NEW & IMPROVED SCORING LOGIC ---
                 let bestMatch = null;
                 let highestScore = -1;
 
                 for (const result of results) {
-                    let score = 0;
-                    // Score based on name matching (case-insensitive)
-                    if (result.artistName.toLowerCase() === artist.toLowerCase()) score += 2;
-                    if (result.trackName.toLowerCase() === title.toLowerCase()) score += 2;
-                    if (album && result.albumName && result.albumName.toLowerCase() === album.toLowerCase()) score += 1;
-
-                    // Heavily weight scores for tracks with a very close duration
-                    if (duration && result.duration) {
-                        const durationDiff = Math.abs(duration - result.duration);
-                        if (durationDiff <= 2) {
-                            score += 3; // Very likely the correct track
-                        } else if (durationDiff <= 5) {
-                            score += 1; // Possibly the correct track
-                        }
+                    let currentScore = 0;
+                    
+                    // 1. Give a huge bonus for having synced lyrics, as they are preferred.
+                    if (result.syncedLyrics) {
+                        currentScore += 10;
                     }
 
-                    if (score > highestScore) {
-                        highestScore = score;
+                    // 2. Score based on exact metadata matches (case-insensitive).
+                    if (result.artistName.toLowerCase() === artist.toLowerCase()) {
+                        currentScore += 5;
+                    }
+                    if (result.trackName.toLowerCase() === title.toLowerCase()) {
+                        currentScore += 5;
+                    }
+                    if (album && result.albumName && result.albumName.toLowerCase() === album.toLowerCase()) {
+                        currentScore += 3;
+                    }
+                    
+                    // 3. This is the most important part: Score based on duration proximity.
+                    //    The closer the duration, the higher the score.
+                    if (duration && result.duration) {
+                        const durationDiff = Math.abs(duration - result.duration);
+                        
+                        if (durationDiff <= 1.5) {
+                            // Almost perfect match, very high bonus
+                            currentScore += 10;
+                        } else if (durationDiff <= 5) {
+                            // Close match, good bonus
+                            currentScore += 5;
+                        } else if (durationDiff <= 10) {
+                            // Loose match, small bonus
+                            currentScore += 1;
+                        }
+                        // We could even add a penalty for large differences, but this is usually sufficient.
+                    }
+
+                    // 4. Update the best match if the current item has a better score.
+                    if (currentScore > highestScore) {
+                        highestScore = currentScore;
                         bestMatch = result;
                     }
                 }
+                // --- END OF SCORING LOGIC ---
                 
                 if (!bestMatch || (!bestMatch.syncedLyrics && !bestMatch.plainLyrics)) {
-                    lyricsContainer.innerHTML = `<p class="lyrics-status">No lyrics found for this track.</p>`;
+                    lyricsContainer.innerHTML = `<p class="lyrics-status">No suitable lyrics found for this version.</p>`;
                     return;
                 }
 
-                // Render the lyrics from the best match
+                // Render the lyrics from the determined best match
                 if (bestMatch.syncedLyrics) {
                     currentLyrics = { synced: parseLrc(bestMatch.syncedLyrics), plain: null };
-                    lyricsContainer.innerHTML = currentLyrics.synced.map(line => `<p class="lyrics-line" data-time="${line.time}">${line.text || '&nbsp;'}</p>`).join('');
+                    lyricsContainer.innerHTML = currentLyrics.synced.map(line => `<p class="lyrics-line" data-time="${line.time}">${line.text || ' '}</p>`).join('');
                     lyricsContainer.className = 'lyrics-container';
                 } else if (bestMatch.plainLyrics) {
                     currentLyrics = { synced: null, plain: bestMatch.plainLyrics };
